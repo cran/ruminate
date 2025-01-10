@@ -10,7 +10,8 @@ NCA_append_report(state, rpt, rpttype, gen_code_only = FALSE)
 \item{state}{NCA state from \code{NCA_fetch_state()}}
 
 \item{rpt}{Report with the current content of the report which will be appended to in
-this function. For details on the structure see the documentation for \code{\link[formods]{FM_generate_report}}.}
+this function. For details on the structure see the documentation for
+\code{\link[formods:FM_generate_report]{formods::FM_generate_report()}}}
 
 \item{rpttype}{Type of report to generate (supported "xlsx", "pptx", "docx").}
 
@@ -34,7 +35,7 @@ will be reported. Those not in a good state will be ignored.
 }
 \examples{
 # We need a state object to use below
-sess_res = NCA_test_mksession(session=list(), full_session=FALSE)
+sess_res = NCA_test_mksession()
 state = sess_res$state
 
 # here we need an empty report object for tabular data
@@ -43,9 +44,9 @@ rpt = list(summary = list(), sheets=list())
 # Now we append the report indicating we want
 # Excel output:
 rpt_res = NCA_append_report(state,
- rpt           = rpt,
- rpttype       = "xlsx",
- gen_code_only = TRUE)
+  rpt           = rpt,
+  rpttype       = "xlsx",
+  gen_code_only = TRUE)
 
 # Shows if report elements are present
 rpt_res$hasrptele
@@ -54,5 +55,5 @@ rpt_res$hasrptele
 cat(paste(rpt_res$code, collapse="\n"))
 }
 \seealso{
-\code{\link{FM_generate_report}}
+\code{\link[formods:FM_generate_report]{formods::FM_generate_report()}}
 }

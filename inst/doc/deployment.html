@@ -49,7 +49,7 @@ overflow: visible;
 </style>
 <style type="text/css" data-origin="pandoc">
 pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span { line-height: 1.25; }
 pre > code.sourceCode > span:empty { height: 1.2em; }
 .sourceCode { overflow: visible; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
@@ -60,7 +60,7 @@ div.sourceCode { overflow: auto; }
 }
 @media print {
 pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
 }
 pre.numberSource code
 { counter-reset: source-line 0; }
@@ -344,8 +344,8 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <h1>Introduction</h1>
 <p>Running ruminate is simple and straight forward using the ruminate
 function:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ruminate)</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ruminate</span>()</span></code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(ruminate)</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="fu">ruminate</span>()</span></code></pre></div>
 <p>This is the default and presents all of the modules in the standard
 format. However you may wish deploy ruminate on an internal server or
 customize it.</p>
@@ -354,14 +354,14 @@ customize it.</p>
 <h1>Deployment</h1>
 <p>To deploy ruminate you can create a copy of the app based on a
 template in the package:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">file.copy</span>(<span class="at">from =</span> <span class="fu">system.file</span>(<span class="at">package=</span><span class="st">&quot;ruminate&quot;</span>,<span class="st">&quot;templates&quot;</span>, <span class="st">&quot;ruminate.R&quot;</span>), </span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>          <span class="at">to   =</span> <span class="st">&quot;App.R&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">file.copy</span>(<span class="at">from =</span> <span class="fu">system.file</span>(<span class="at">package=</span><span class="st">&quot;ruminate&quot;</span>,<span class="st">&quot;templates&quot;</span>, <span class="st">&quot;ruminate.R&quot;</span>), </span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>          <span class="at">to   =</span> <span class="st">&quot;App.R&quot;</span>)</span></code></pre></div>
 <p>Certain features of the app behave differently depending on whether
 it is running locally or deployed on a server. To <em>tell</em> the App
 it is deployed you need to create an empty file named
 <code>DEPLOYED</code> in the same directory as the deployed app
 file.</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">file.create</span>(<span class="st">&quot;DEPLOYED&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">file.create</span>(<span class="st">&quot;DEPLOYED&quot;</span>)</span></code></pre></div>
 <p>Those two files (<code>App.R</code> and <code>DEPLOYED</code>) placed
 in the same direcory on a shiny server with ruminate installed should be
 enough to deploy the basic app.</p>
@@ -386,26 +386,26 @@ you can simply remove the tabs for any modules you do not want.</p>
 <h2>Individual Modules</h2>
 <p>At the top of the <code>App.R</code> file the locations of module
 configuration files are defined:</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>formods.yaml  <span class="ot">=</span> <span class="fu">system.file</span>(<span class="at">package=</span><span class="st">&quot;formods&quot;</span>,  <span class="st">&quot;templates&quot;</span>,  <span class="st">&quot;formods.yaml&quot;</span>)</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>ASM.yaml      <span class="ot">=</span> <span class="fu">system.file</span>(<span class="at">package=</span><span class="st">&quot;formods&quot;</span>,  <span class="st">&quot;templates&quot;</span>,  <span class="st">&quot;ASM.yaml&quot;</span>)</span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>UD.yaml       <span class="ot">=</span> <span class="fu">system.file</span>(<span class="at">package=</span><span class="st">&quot;formods&quot;</span>,  <span class="st">&quot;templates&quot;</span>,  <span class="st">&quot;UD.yaml&quot;</span>)</span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>DW.yaml       <span class="ot">=</span> <span class="fu">system.file</span>(<span class="at">package=</span><span class="st">&quot;formods&quot;</span>,  <span class="st">&quot;templates&quot;</span>,  <span class="st">&quot;DW.yaml&quot;</span>)</span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>FG.yaml       <span class="ot">=</span> <span class="fu">system.file</span>(<span class="at">package=</span><span class="st">&quot;formods&quot;</span>,  <span class="st">&quot;templates&quot;</span>,  <span class="st">&quot;FG.yaml&quot;</span>)</span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>NCA.yaml      <span class="ot">=</span> <span class="fu">system.file</span>(<span class="at">package=</span><span class="st">&quot;ruminate&quot;</span>, <span class="st">&quot;templates&quot;</span>,  <span class="st">&quot;NCA.yaml&quot;</span>)</span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>MB.yaml       <span class="ot">=</span> <span class="fu">system.file</span>(<span class="at">package=</span><span class="st">&quot;ruminate&quot;</span>, <span class="st">&quot;templates&quot;</span>,  <span class="st">&quot;MB.yaml&quot;</span>)</span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>CTS.yaml      <span class="ot">=</span> <span class="fu">system.file</span>(<span class="at">package=</span><span class="st">&quot;ruminate&quot;</span>, <span class="st">&quot;templates&quot;</span>,  <span class="st">&quot;CTS.yaml&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>formods.yaml  <span class="ot">=</span> <span class="fu">system.file</span>(<span class="at">package=</span><span class="st">&quot;formods&quot;</span>,  <span class="st">&quot;templates&quot;</span>,  <span class="st">&quot;formods.yaml&quot;</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>ASM.yaml      <span class="ot">=</span> <span class="fu">system.file</span>(<span class="at">package=</span><span class="st">&quot;formods&quot;</span>,  <span class="st">&quot;templates&quot;</span>,  <span class="st">&quot;ASM.yaml&quot;</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>UD.yaml       <span class="ot">=</span> <span class="fu">system.file</span>(<span class="at">package=</span><span class="st">&quot;formods&quot;</span>,  <span class="st">&quot;templates&quot;</span>,  <span class="st">&quot;UD.yaml&quot;</span>)</span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>DW.yaml       <span class="ot">=</span> <span class="fu">system.file</span>(<span class="at">package=</span><span class="st">&quot;formods&quot;</span>,  <span class="st">&quot;templates&quot;</span>,  <span class="st">&quot;DW.yaml&quot;</span>)</span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>FG.yaml       <span class="ot">=</span> <span class="fu">system.file</span>(<span class="at">package=</span><span class="st">&quot;formods&quot;</span>,  <span class="st">&quot;templates&quot;</span>,  <span class="st">&quot;FG.yaml&quot;</span>)</span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>NCA.yaml      <span class="ot">=</span> <span class="fu">system.file</span>(<span class="at">package=</span><span class="st">&quot;ruminate&quot;</span>, <span class="st">&quot;templates&quot;</span>,  <span class="st">&quot;NCA.yaml&quot;</span>)</span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>MB.yaml       <span class="ot">=</span> <span class="fu">system.file</span>(<span class="at">package=</span><span class="st">&quot;ruminate&quot;</span>, <span class="st">&quot;templates&quot;</span>,  <span class="st">&quot;MB.yaml&quot;</span>)</span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a>CTS.yaml      <span class="ot">=</span> <span class="fu">system.file</span>(<span class="at">package=</span><span class="st">&quot;ruminate&quot;</span>, <span class="st">&quot;templates&quot;</span>,  <span class="st">&quot;CTS.yaml&quot;</span>)</span></code></pre></div>
 <p>Each of these controls different aspects of the module including the
 text displayed, icons used, certain behaviors of the app, default
 values, etc. These options and are described in the comments of the
 configuration files. To use these you need to first make a copy of the
 specific configuration file. For example, to customize the NCA module
 you would make a copy of the <code>NCA.yaml</code> file:</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">file.copy</span>(<span class="at">from =</span> <span class="fu">system.file</span>(<span class="at">package=</span><span class="st">&quot;ruminate&quot;</span>, <span class="st">&quot;templates&quot;</span>,  <span class="st">&quot;NCA.yaml&quot;</span>),</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>          <span class="at">to   =</span> <span class="st">&quot;myNCA.yaml&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="fu">file.copy</span>(<span class="at">from =</span> <span class="fu">system.file</span>(<span class="at">package=</span><span class="st">&quot;ruminate&quot;</span>, <span class="st">&quot;templates&quot;</span>,  <span class="st">&quot;NCA.yaml&quot;</span>),</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>          <span class="at">to   =</span> <span class="st">&quot;myNCA.yaml&quot;</span>)</span></code></pre></div>
 <p>Then you can make any changes you want in the <code>myNCA.yaml</code>
 file. Then you need specify in the <code>App.R</code> file that you want
 to use the new configuration file.</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>NCA.yaml      <span class="ot">=</span> <span class="st">&quot;myNCA.yaml&quot;</span></span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>NCA.yaml      <span class="ot">=</span> <span class="st">&quot;myNCA.yaml&quot;</span></span></code></pre></div>
 <p>You can do the same thing for the other modules as well.</p>
 </div>
 <div id="reporting-templates" class="section level2">
@@ -423,23 +423,23 @@ reporting templates</a></li>
 (<code>report.pptx</code>), and YAML (<code>report.yaml</code>) files in
 a <code>templates</code> directory. Then you need to create a copy of
 the <code>formods</code> YAML file in the deployment folder.</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">file.copy</span>(<span class="at">from =</span> <span class="fu">system.file</span>(<span class="at">package=</span><span class="st">&quot;formods&quot;</span>, <span class="st">&quot;templates&quot;</span>,  <span class="st">&quot;formods.yaml&quot;</span>),</span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>          <span class="at">to   =</span> <span class="st">&quot;myformods.yaml&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="fu">file.copy</span>(<span class="at">from =</span> <span class="fu">system.file</span>(<span class="at">package=</span><span class="st">&quot;formods&quot;</span>, <span class="st">&quot;templates&quot;</span>,  <span class="st">&quot;formods.yaml&quot;</span>),</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>          <span class="at">to   =</span> <span class="st">&quot;myformods.yaml&quot;</span>)</span></code></pre></div>
 <p>Next you need to edit the <code>myformods.yaml</code> file to ensure
 those new files are used by editing the <code>include</code> section to
 update the sources for each file. See below:</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>FM<span class="sc">:</span> </span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  include<span class="sc">:</span></span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>    files<span class="sc">:</span></span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    <span class="sc">-</span> file<span class="sc">:</span></span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>        source<span class="sc">:</span> <span class="st">&#39;file.path(&quot;.&quot;, &quot;templates&quot;, &quot;report.docx&quot;)&#39;</span></span>
-<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>        dest<span class="sc">:</span>   <span class="st">&#39;file.path(&quot;config&quot;,&quot;report.docx&quot;)&#39;</span></span>
-<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>    <span class="sc">-</span> file<span class="sc">:</span></span>
-<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>        source<span class="sc">:</span> <span class="st">&#39;file.path(&quot;.&quot;, &quot;templates&quot;, &quot;report.pptx&quot;)&#39;</span></span>
-<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>        dest<span class="sc">:</span>   <span class="st">&#39;file.path(&quot;config&quot;,&quot;report.pptx&quot;)&#39;</span></span>
-<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>    <span class="sc">-</span> file<span class="sc">:</span></span>
-<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>        source<span class="sc">:</span> <span class="st">&#39;file.path(&quot;.&quot;, &quot;templates&quot;, &quot;report.yaml&quot;)&#39;</span></span>
-<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>        dest<span class="sc">:</span>   <span class="st">&#39;file.path(&quot;config&quot;,&quot;report.yaml&quot;)&#39;</span></span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>FM<span class="sc">:</span> </span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>  include<span class="sc">:</span></span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>    files<span class="sc">:</span></span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>    <span class="sc">-</span> file<span class="sc">:</span></span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>        source<span class="sc">:</span> <span class="st">&#39;file.path(&quot;.&quot;, &quot;templates&quot;, &quot;report.docx&quot;)&#39;</span></span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>        dest<span class="sc">:</span>   <span class="st">&#39;file.path(&quot;config&quot;,&quot;report.docx&quot;)&#39;</span></span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a>    <span class="sc">-</span> file<span class="sc">:</span></span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a>        source<span class="sc">:</span> <span class="st">&#39;file.path(&quot;.&quot;, &quot;templates&quot;, &quot;report.pptx&quot;)&#39;</span></span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a>        dest<span class="sc">:</span>   <span class="st">&#39;file.path(&quot;config&quot;,&quot;report.pptx&quot;)&#39;</span></span>
+<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a>    <span class="sc">-</span> file<span class="sc">:</span></span>
+<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a>        source<span class="sc">:</span> <span class="st">&#39;file.path(&quot;.&quot;, &quot;templates&quot;, &quot;report.yaml&quot;)&#39;</span></span>
+<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a>        dest<span class="sc">:</span>   <span class="st">&#39;file.path(&quot;config&quot;,&quot;report.yaml&quot;)&#39;</span></span></code></pre></div>
 <p>Then change the <code>App.R</code> file to point to the new
 <code>myformods.yaml</code> file.</p>
 </div>

@@ -1,7 +1,9 @@
 #'@import dplyr
-#'@import rxode2
 #'@import ggplot2
 #'@importFrom stats rnorm  runif
+
+# #'@import rxode2
+# #'@import nlmixr2
 
 #'@export
 #'@title Rule-Based simulates
@@ -16,6 +18,7 @@
 #'time units of the system).
 #'@param output_times  Specific output times to include. Other times will be
 #'included as well to ensure proper evaluation of the rules.
+#'@param time_scales  Optional list with timescale information to include in the output.
 #'@param rules  List of rules, see below for a description of the format.
 #'@param rx_options List of options to pass through to `rxSolve()`.
 #'@param preamble Character string of user-defined code to execute in
@@ -29,7 +32,10 @@
 #'  \item{msgs:}       Error or warning messages if any issues were encountered.
 #'  \item{simall:}     Simulation results.
 #'  \item{ev_history:} The event table for the entire simulation history.
-#'  \item{eval_times:} Evaluation time points
+#'  \item{eval_times:} Evaluation time points at the system time scale
+#'  \item{eval_times_df:} Data frame of the evaluation time points with a
+#'  column for the system time scale and then columns for named time scales.
+#'
 #'}
 #'@details
 #' For a detailed examples see \code{vignette("clinical_trial_simulation", package = "ruminate")}
@@ -39,6 +45,7 @@ simulate_rules <- function(object,
                            subjects,
                            eval_times,
                            output_times,
+                           time_scales = NULL,
                            rules, rx_options=list(),
                            preamble = "",
                            pbm = "Evaluation times",
@@ -46,6 +53,9 @@ simulate_rules <- function(object,
 
 
   eval_times = unique(sort(eval_times))
+  # Creating the eval_times data frame with columns for the system timescale
+  # and any other time scale columns will be added below
+  eval_times_df = data.frame(time = eval_times)
 
   # Number of evaluation times:
   nevt = length(eval_times) + 1
@@ -106,12 +116,18 @@ simulate_rules <- function(object,
       if(is.null(id) | is.null(state) | is.null(SI_ev_history)){
         fpd = -1
       }else{
-
         # All of the events as a data frame:
         evall = as.data.frame(SI_ev_history)
 
         # Just the dosing records for the current subject/state
-        drecs =  evall[evall[["id"]] == id & evall[["cmt"]] == state & evall[["evid"]] == 1, ]
+        # When there is only one subject the event history table wont have an
+        # id column, so we have to add some logic for that here:
+        if("id" %in% names(evall)){
+          drecs =  evall[evall[["id"]] == id & evall[["cmt"]] == state & evall[["evid"]] == 1, ]
+        } else {
+          drecs =  evall[                      evall[["cmt"]] == state & evall[["evid"]] == 1, ]
+        }
+
         if(nrow(drecs) > 0){
           # Making sure everything is sorted correctly:
           drecs = drecs[with(drecs, order(time)),]
@@ -123,7 +139,7 @@ simulate_rules <- function(object,
 
 
     fpd}
-    '  
+    '
 
     preamble = paste0(c(std_fcns, preamble), collapse="\n")
 
@@ -205,8 +221,44 @@ simulate_rules <- function(object,
       }
     }
   } else {
-    isgod = FALSE
+    isgood = FALSE
     msgs = c(msgs, "One or more packages from the rxode2 family are missing")
+  }
+
+
+
+  # Checking the format of time scaling information
+  if(!is.null(time_scales)){
+    if(!("details" %in% names(time_scales))){
+      msgs = c(msgs, "time_scales: details element not found")
+      isgood = FALSE
+    }
+    if(!("system" %in% names(time_scales))){
+      msgs = c(msgs, "time_scales: system element not found")
+      isgood = FALSE
+    }
+
+    if(time_scales[["system"]] %in% names(time_scales[["details"]])){
+      for(tmp_ts in names(time_scales[["details"]])){
+        if(!"verb" %in% names(time_scales[["details"]][[tmp_ts]])){
+          isgood = FALSE
+          msgs = c(msgs, paste0("time_scales->details->", tmp_ts, ": verb field missing."))
+        }
+        if("conv" %in% names(time_scales[["details"]][[tmp_ts]])){
+          if(!is.numeric(time_scales[["details"]][[tmp_ts]][["conv"]])){
+            isgood = FALSE
+            msgs = c(msgs, paste0("time_scales->details->", tmp_ts, ": conv field should be numeric."))
+          }
+        } else {
+          isgood = FALSE
+          msgs = c(msgs, paste0("time_scales->details->", tmp_ts, ": conv field missing."))
+        }
+      }
+    } else {
+      msgs = c(msgs, "time_scales: the system time scale was not found in details")
+      isgood = FALSE
+    }
+
   }
 
   # Tracking errors found to prevent repeated reporting. As errors are
@@ -249,12 +301,12 @@ simulate_rules <- function(object,
     # This will force the simulation to initialize at the
     # first observed time. This will be important as wel
     # step through the different eval_time intervals:
-    rxSetIni0(FALSE)
+    rxode2::rxSetIni0(FALSE)
 
     # Simulating before the fist eval_time to get
     # a snapshot of the simulation:
     tmp_ot  = sort(unique(c(ot_sim[ot_sim < min(eval_times)], min(eval_times))))
-    init_ev  = rxode2et::et(time=tmp_ot, id=sub_ids, cmt=rx_details[["elements"]][["outputs"]][1])
+    init_ev  = rxode2::et(time=tmp_ot, id=sub_ids, cmt=rx_details[["elements"]][["outputs"]][1])
 
     #rxdetails[["elements"]][["outputs"]][1]
     sim_cmd = paste0(c(preamble,
@@ -272,19 +324,13 @@ simulate_rules <- function(object,
     if(!is.null(pbo)){
       cli::cli_progress_update(id=pbo)
     }
-  
+
 
     if(tcres[["isgood"]]){
-      #sim_pre = as.data.frame(tcres[["capture"]][["sim"]])
-      # JMH
       sim_pre =
       fetch_rxtc(rx_details = rx_details,
                  sim        = tcres[["capture"]][["sim"]])
 
-      # Catching the case where there is 1 subject
-      if(nsub == 1){
-        sim_pre[["id"]] = 1
-      }
       # Setting the rule flag for the presimulation
       for(rule_id in names(rules)){
         sim_pre[[rule_id]] = rules[[rule_id]][["false_flag"]]
@@ -353,11 +399,11 @@ simulate_rules <- function(object,
               sub_state       = simall[simall[["time"]] == eval_times[et_idx] & simall[["id"]] == sub_id, ]
               sub_sim_history = simall[                                         simall[["id"]] == sub_id, ]
 
-              # This should aways be one row, but just in case we check and throw
+              # This should always be one row, but just in case we check and throw
               # a flag if something went wrong.
               if(nrow(sub_state) == 1){
                 for(rule_id in names(rules)){
-                  # THis is the snapshot of the current users simulation state at
+                  # This is the snapshot of the current users simulation state at
                   # the evaluation point
                   tc_env = as.list(sub_state)
 
@@ -414,13 +460,11 @@ simulate_rules <- function(object,
                         tc_env[["SI_interval_ev"]] = interval_ev
                         tc_env[["SI_ud_history"]]  = ud_history
 
-
                         tcres =
                            FM_tc(tc_env  = tc_env,
                                  capture = capture,
                                  cmd     = cmd)
 
-                          #browser()
                         if(tcres[["isgood"]]){
                           # Now we're going to process the dosing
                           dvals  = as.numeric(tcres[["capture"]][["SI_values"]])
@@ -459,8 +503,10 @@ simulate_rules <- function(object,
                             sub_ot = sub_ot[sub_ot >= t_min & sub_ot <=t_max]
                           }
 
-                          interval_ev = rxode2et::etRbind(interval_ev,
-                                           rxode2et::et(
+                          # Note when there is only one subject this will not
+                          # retain the id column
+                          interval_ev = rxode2::etRbind(interval_ev,
+                                           rxode2::et(
                                               cmt  = tmp_cmt,
                                               id   = sub_id,
                                               amt  = dvals,
@@ -583,20 +629,20 @@ simulate_rules <- function(object,
                 } else {
                  new_state_amt  = sub_state[[state]]
                 }
-                interval_ev = rxode2et::etRbind(interval_ev,
-                                 rxode2et::et(
+                interval_ev = rxode2::etRbind(interval_ev,
+                                 rxode2::et(
                                     cmt  = state,
                                     id   = sub_id,
                                     amt  = new_state_amt,
                                     evid = 4,
                                     time = eval_times[et_idx]))
               }
-              
+
               # Combining the subject specific sampling with
               # the interval samples:
               sub_ot       = sort(unique(c(sub_ot, tmp_ot)))
-              interval_ev  = rxode2et::etRbind(interval_ev,
-                             rxode2et::et(time=sub_ot, id=sub_id,
+              interval_ev  = rxode2::etRbind(interval_ev,
+                             rxode2::et(time=sub_ot, id=sub_id,
                              cmt=rx_details[["elements"]][["outputs"]][1]))
 
             }
@@ -617,32 +663,32 @@ simulate_rules <- function(object,
               tc_env  = list(object   = object,
                              subjects = subjects,
                              ev       = interval_ev))
-            
+
             # Storing all of the events in a single table to return to the user
-            ev_history  = rxode2et::etRbind(ev_history , interval_ev)
-            
+            ev_history  = rxode2::etRbind(ev_history , interval_ev)
+
             if(tcres[["isgood"]]){
-            
+
               # This contains the current chunk of the simulation:
               #tmp_sim = as.data.frame(tcres[["capture"]][["sim"]])
               tmp_sim =
               fetch_rxtc(rx_details = rx_details,
                          sim        = tcres[["capture"]][["sim"]])
-            
+
               # Setting the rule flag for the presimulation
               for(rule_id in names(rules)){
                 tmp_sim[[rule_id]] = sub_rule_flags[[rule_id]]
               }
-            
+
               # We need to glue the simulations together. So first we remove the
               # last time point off of the simall data frame. The last time
               # point of that data frame should be the first of this new
               # simulation:
               simall = simall[simall[["time"]] != eval_times[et_idx], ]
-            
+
               # Now we stack the old simulations on top of the new one:
               simall = rbind(simall, tmp_sim)
-            
+
             } else {
               error_flag = "Warning: dosing beyond time interval"
               if(is.null(errors_found[[error_flag]])){
@@ -673,6 +719,19 @@ simulate_rules <- function(object,
     # sorting by id then time:
     simall = simall[ with(simall, order(id, time)), ]
 
+    # Adding timescale columns ts.short_name
+    if(!is.null(output_times)){
+       for(tmp_ts in names(time_scales[["details"]])){
+
+         conv_fact = time_scales[["details"]][[ tmp_ts ]][["conv"]]/
+                     time_scales[["details"]][[ time_scales[["system"]] ]][["conv"]]
+
+         simall[[paste0("ts.", tmp_ts)]]        =     simall[["time"]]*conv_fact
+         ev_history[[paste0("ts.", tmp_ts)]]    = ev_history[["time"]]*conv_fact
+         eval_times_df[[paste0("ts.", tmp_ts)]] =           eval_times*conv_fact
+       }
+    }
+
     if(smooth_sampling){
       # trimming things down to the desired time interval:
       simall = simall[simall[["time"]] >= min(output_times) &
@@ -688,11 +747,12 @@ simulate_rules <- function(object,
   }
 
   res = list(
-    simall      = simall,
-    ev_history  = ev_history,
-    msgs        = msgs,
-    eval_times  = eval_times,
-    isgood      = isgood
+    simall         = simall,
+    ev_history     = ev_history,
+    msgs           = msgs,
+    eval_times     = eval_times,
+    eval_times_df  = eval_times_df,
+    isgood         = isgood
   )
 res}
 
@@ -703,6 +763,7 @@ res}
 #'@param fpage        If facets are selected and multiple pages are generated then
 #'this indcates       the page to return.
 #'@param fcol         Name of column to facet by or \code{NULL} to disable faceting (\code{"id"}).
+#'@param xcol         Name of column to take x-data from (\code{"time"}).
 #'@param error_msgs   Named list with error messages to overwrite (\code{NULL}
 #'@param ylog         Boolean to enable log10 scaling of the y-axis (\code{TRUE}
 #'@param ylab_str     Label for the y-axis (\code{"Output"}
@@ -715,7 +776,7 @@ res}
 #' \itemize{
 #'  \item{isgood:}       Return status of the function.
 #'  \item{msgs:}         Error or warning messages if any issues were encountered.
-#'  \item{npages:}       Total number of pages using the current configuration. 
+#'  \item{npages:}       Total number of pages using the current configuration.
 #'  \item{error_msgs:}   List of error messages used.
 #'  \item{dsp:}          Intermediate dataset generated from \code{sro} to plot in ggplot.
 #'  \item{fig:}          Figure generated.
@@ -727,6 +788,7 @@ plot_sr_ev <- function(
   sro        = NULL,
   fpage      = 1,
   fcol       = "id",
+  xcol       = "time",
   error_msgs = NULL,
   ylog       = TRUE,
   ylab_str   = "Amount",
@@ -758,7 +820,7 @@ plot_sr_ev <- function(
 
   if(!all(evplot %in% allowed_evplot)){
     isgood = FALSE
-    msgs = c(msgs, paste0("evplot not allowed: ", 
+    msgs = c(msgs, paste0("evplot not allowed: ",
              paste0(evplot[!(evplot %in% allowed_evplot)], collapse=", "))
             )
   }
@@ -799,22 +861,22 @@ plot_sr_ev <- function(
   # Now we inspect the datasets
   if(isgood){
 
-    col_keep = c("id", "time", "cmt", "amt", "evid", 
+    col_keep = c("id", xcol, "cmt", "amt", "evid",
                  "Event", "Group")
-    
+
     dsp = sro[["ev_history"]]                            |>
      dplyr::filter(!is.na(.data[["amt"]]))               |>
      dplyr::filter(.data[["evid"]] %in% evplot)          |>
      dplyr::mutate(Event = "")                           |>
-     dplyr::mutate(Event = 
-       ifelse(.data[["evid"]] == 1, 
-              "Dose", 
+     dplyr::mutate(Event =
+       ifelse(.data[["evid"]] == 1,
+              "Dose",
               .data[["Event"]]))                         |>
-     dplyr::mutate(Event =                               
-       ifelse(.data[["evid"]] == 4,                      
-              "Set State",                                    
+     dplyr::mutate(Event =
+       ifelse(.data[["evid"]] == 4,
+              "Set State",
               .data[["Event"]]))                         |>
-     dplyr::mutate(Group = 
+     dplyr::mutate(Group =
        paste0(.data[["Event"]], ": ", .data[["cmt"]]))   |>
      dplyr::select(col_keep)
 
@@ -827,33 +889,33 @@ plot_sr_ev <- function(
 
         # Total number:
         num_fcol = length(unique(dsp[[fcol]]))
-        
+
         # Number per page:
         num_pp =  fnrow*fncol
-        
-        # We only have to shrink it down  if there 
+
+        # We only have to shrink it down  if there
         # are too many for a single page:
         if(num_fcol > num_pp){
           # Total number of pages needed for all the figures
           npages = ceiling(num_fcol/num_pp)
-        
+
           # This will reset the facet page if a value > npages was specified
           if(fpage > npages){
             msgs = c(msgs, paste0("fpage: ", error_msgs[["fpage_dne"]]))
             fpage = 1
           }
-        
+
           start_idx = (fpage-1)*num_pp+1
           stop_idx  = min(c((fpage)*num_pp, num_fcol))
-        
-        
+
+
           # This is all of the factor column values:
           tmp_fcol_vals = sort(unique(dsp[[fcol]]))
-        
+
           # now we pull out the subset
           tmp_fcol_vals = tmp_fcol_vals[start_idx:stop_idx]
-        
-          # Now we need to filter down to the subset 
+
+          # Now we need to filter down to the subset
           # that will be on the page requested:
           dsp = dsp[dsp[[fcol]] %in% tmp_fcol_vals, ]
         }
@@ -871,26 +933,26 @@ plot_sr_ev <- function(
 
     fig = ggplot2::ggplot(data=dsp)+
       ggplot2::geom_vline(
-        xintercept = sro[["eval_times"]],
+        xintercept = sro[["eval_times_df"]][[xcol]],
         color      = "grey",
         linetype   = "dashed")       +
       ggplot2::geom_point(
-        aes(x    = .data[["time"]], 
-           y     = .data[["amt"]], 
-           group = .data[["Group"]], 
+        aes(x    = .data[[xcol]],
+           y     = .data[["amt"]],
+           group = .data[["Group"]],
            color = .data[["Group"]]))  +
       ggplot2::geom_line(
-        aes(x     = .data[["time"]], 
-            y     = .data[["amt"]], 
-            group = .data[["Group"]], 
-            color = .data[["Group"]])) 
+        aes(x     = .data[[xcol]],
+            y     = .data[["amt"]],
+            group = .data[["Group"]],
+            color = .data[["Group"]]))
 
     if(!is.null(fcol)){
       fig = fig +facet_wrap(.~.data[[fcol]], ncol=fncol, nrow=fnrow)
     }
 
     if(ylog){
-      fig = fig +ggplot2::scale_y_log10() 
+      fig = fig +ggplot2::scale_y_log10()
     }
 
     if(!is.null(ylab_str)){
@@ -916,7 +978,7 @@ plot_sr_ev <- function(
     npages     = npages,
     error_msgs = error_msgs,
     dsp        = dsp,
-    fig        = fig 
+    fig        = fig
   )
 res}
 
@@ -929,6 +991,7 @@ res}
 #'@param fpage        If facets are selected and multiple pages are generated then
 #'this indcates       the page to return.
 #'@param fcol         Name of column to facet by or \code{NULL} to disable faceting (\code{"id"}).
+#'@param xcol         Name of column to take x-data from (\code{"time"}).
 #'@param error_msgs   Named list with error messages to overwrite (\code{NULL}
 #'@param ylog         Boolean to enable log10 scaling of the y-axis (\code{TRUE}
 #'@param ylab_str     Label for the y-axis (\code{"Output"}
@@ -940,7 +1003,7 @@ res}
 #' \itemize{
 #'  \item{isgood:}       Return status of the function.
 #'  \item{msgs:}         Error or warning messages if any issues were encountered.
-#'  \item{npages:}       Total number of pages using the current configuration. 
+#'  \item{npages:}       Total number of pages using the current configuration.
 #'  \item{error_msgs:}   List of error messages used.
 #'  \item{dsp:}          Intermediate dataset generated from \code{sro} to plot in ggplot.
 #'  \item{fig:}          Figure generated.
@@ -953,6 +1016,7 @@ plot_sr_tc <- function(
   dvcols     = NULL,
   fpage      = 1,
   fcol       = "id",
+  xcol       = "time",
   error_msgs = NULL,
   ylog       = TRUE,
   ylab_str   = "Output",
@@ -963,6 +1027,7 @@ plot_sr_tc <- function(
 
   error_msgs = list(
    char_bad         = "Should be character data.",
+   char_empty       = "Empty character data.",
    fpage_dne        = "The specified figure page does not exist using 1 instead.",
    num_bad          = "Should be numeric data.",
    sim_failed       = "The simulation failed.",
@@ -992,6 +1057,9 @@ plot_sr_tc <- function(
   if(!is.character(dvcols)){
     isgood = FALSE
     msgs = c(msgs, paste0("dvcols: ", error_msgs[["char_bad"]]))
+  }else if("" %in% dvcols){
+    isgood = FALSE
+    msgs = c(msgs, paste0("dvcols: ", error_msgs[["char_empty"]]))
   }
   # This is optional
   if(!is.null(fcol)){
@@ -1024,33 +1092,33 @@ plot_sr_tc <- function(
 
         # Total number:
         num_fcol = length(unique(dsp[[fcol]]))
-        
+
         # Number per page:
         num_pp =  fnrow*fncol
-        
-        # We only have to shrink it down  if there 
+
+        # We only have to shrink it down  if there
         # are too many for a single page:
         if(num_fcol > num_pp){
           # Total number of pages needed for all the figures
           npages = ceiling(num_fcol/num_pp)
-        
+
           # This will reset the facet page if a value > npages was specified
           if(fpage > npages){
             msgs = c(msgs, paste0("fpage: ", error_msgs[["fpage_dne"]]))
             fpage = 1
           }
-        
+
           start_idx = (fpage-1)*num_pp+1
           stop_idx  = min(c((fpage)*num_pp, num_fcol))
-        
-        
+
+
           # This is all of the factor column values:
           tmp_fcol_vals = sort(unique(dsp[[fcol]]))
-        
+
           # now we pull out the subset
           tmp_fcol_vals = tmp_fcol_vals[start_idx:stop_idx]
-        
-          # Now we need to filter down to the subset 
+
+          # Now we need to filter down to the subset
           # that will be on the page requested:
           dsp = dsp[dsp[[fcol]] %in% tmp_fcol_vals, ]
         }
@@ -1066,21 +1134,21 @@ plot_sr_tc <- function(
   # dsp - should be defined with subset of the data for the current figure
   if(isgood){
     # These are the columns we keep for plotting
-    col_keep = c("time", "id", dvcols, fcol) 
+    col_keep = c(xcol, "id", dvcols, fcol)
     dsp = dplyr::select(dsp, dplyr::all_of(col_keep))
 
     # This puts the dependent variables into standard columns
-    dsp = tidyr::pivot_longer(dsp, 
-            cols      = dvcols, 
-            names_to  = "output_names", 
+    dsp = tidyr::pivot_longer(dsp,
+            cols      = dvcols,
+            names_to  = "output_names",
             values_to = "output")
-    dsp = dplyr::mutate(dsp, 
+    dsp = dplyr::mutate(dsp,
               pgroup = paste0(.data[["id"]], ":", .data[["output_names"]]))
 
     fig = ggplot(data=dsp)+
-      geom_line(aes(x     = .data[["time"]], 
-                    y     = .data[["output"]], 
-                    group = .data[["pgroup"]], 
+      geom_line(aes(x     = .data[[xcol]],
+                    y     = .data[["output"]],
+                    group = .data[["pgroup"]],
                     color = .data[["output_names"]]))
 
     if(!is.null(fcol)){
@@ -1088,7 +1156,7 @@ plot_sr_tc <- function(
     }
 
     if(ylog){
-      fig = fig +ggplot2::scale_y_log10() 
+      fig = fig +ggplot2::scale_y_log10()
     }
 
     if(!is.null(ylab_str)){
@@ -1114,7 +1182,7 @@ plot_sr_tc <- function(
     npages     = npages,
     error_msgs = error_msgs,
     dsp        = dsp,
-    fig        = fig 
+    fig        = fig
   )
 res}
 
@@ -1152,23 +1220,42 @@ fetch_rxinfo <- function(object){
   if( Sys.getenv("ruminate_rxfamily_found") == "TRUE"){
     # use str(object) to get the names of the list elements
     covariates      = object$allCovs
-    population      = object$params$pop
-    residual_error  = object$params$resid
-    parameters      = object$params$output$primary
-    secondary       = object$params$output$secondary
-    outputs         = object$params$output$endpoint
-    states          = object$params$cmt
-    iiv             = object$params$group$id
+    population      = object$props$pop
+    residual_error  = object$props$resid
+    parameters      = object$props$output$primary
+    secondary       = object$props$output$secondary
+    outputs         = object$props$output$endpoint
+    states          = object$props$cmt
+    iiv             = object$props$group$id
+    dosing          = object$meta$dosing
+    sys_units       = object$meta$units
     elements = list(
+      dosing         = dosing,
+      sys_units      = sys_units ,
       covariates     = covariates,
       population     = population,
       parameters     = parameters,
       secondary      = secondary,
-      residual_error = residual_error,     
+      residual_error = residual_error,
       iiv            = iiv,
-      outputs        = outputs,    
+      outputs        = outputs,
       states         = states)
 
+    # Making sure that any empty element has a length of zero for testing.
+    for(ename in names(elements)){
+      if(is.null(elements[[ename]])){
+        elements[[ename]] = character()
+      }
+    }
+
+    # If an output or secondary parameter is defined after it has been used it
+    # can be misinterpreted as a covaraite. This checks for that. 
+    if(any(elements[["covariates"]] %in% c(elements[["outputs"]], elements[["secondary"]]))){
+      isgood = FALSE
+      bad_covs = elements[["covariates"]][ elements[["covariates"]] %in% c(elements[["outputs"]], elements[["secondary"]])]
+      msgs = c(msgs, paste0("The following covariate(s) were found in either outputs or secondary parameters: ", paste0(bad_covs, collapse=", ")))
+    }
+    
 
     # Output details
     txt_info = c(txt_info, "Outputs\n")
@@ -1211,7 +1298,7 @@ fetch_rxinfo <- function(object){
       ht_info  = tagList(ht_info, tags$em("None found"), tags$br(), tags$br())
       list_info = c(list_info, 1,"Covariates: None Found")
     }
-    # Population parameters 
+    # Population parameters
     txt_info = c(txt_info, "Population Parameters\n")
     ht_info  = tagList(ht_info, tags$b("Population Parameters"), tags$br())
     if(length(population) > 0){
@@ -1275,14 +1362,12 @@ fetch_rxinfo <- function(object){
   } else {
     isgood   = FALSE
     elements = NULL
-    msgs = c(msgs, "rxode2 not installed")
+    msgs = c(msgs, "rxode2 family of tools not installed")
   }
 
   if(is.null(txt_info)){
     txt_info = ""
   }
-
-
 
   res = list(
     isgood    = isgood,
@@ -1299,7 +1384,8 @@ res}
 #'@description This will provide information like parameter names, covriates,
 #'etc from an rxode2 object.
 #'@param object rxode2 model object  An ID string that corresponds with the ID used to call the modules UI elements.
-#'@param nsub Number of subjects to generate.
+#'@param nsub Number of subjects to generate. If set to 1 it will return the
+#'typical values (IIV set to zero).
 #'@param covs List describing how covariates should be generated.
 #'@return  List with the following elements.
 #' \itemize{
@@ -1317,6 +1403,8 @@ mk_subjects <- function(object, nsub = 10, covs=NULL){
 
   isgood       = TRUE
   msgs         = c()
+  params       = NULL
+  iCov         = NULL
   subjects     = NULL
   missing_covs = c()
 
@@ -1348,7 +1436,7 @@ mk_subjects <- function(object, nsub = 10, covs=NULL){
     # If we made it here then we've checked everything successfully
     if(isgood){
       iCov = data.frame(
-                id         = as.factor(c(1:nsub)))
+                id         = as.integer(c(1:nsub)))
 
       for(covname in names(covs)){
         # Discrete and continuous distributions are treated differently
@@ -1389,9 +1477,9 @@ mk_subjects <- function(object, nsub = 10, covs=NULL){
       #-----------------------------------------------------------------
       # JMH figure out a better way to do this using low level functions
       tmp_cmt = rx_details[["elements"]][["states"]][1]
-      ev <-rxode2et::et(amt=0, cmt=force(tmp_cmt), id=c(1:nsub)) 
+      ev <-rxode2::et(amt=0, cmt=force(tmp_cmt), id=c(1:nsub))
 
-     #ev <-rxode2et::et(amt=0, cmt=1, id=c(1:nsub)) |>
+     #ev <-rxode2::et(amt=0, cmt=1, id=c(1:nsub)) |>
      #     add.sampling(c(0,1))
       sim  <- rxode2::rxSolve(object, ev, nSub=nsub, iCov = iCov)
       params = as.data.frame(sim$params)
@@ -1408,16 +1496,25 @@ mk_subjects <- function(object, nsub = 10, covs=NULL){
       }
 
       params   = dplyr::select(params, dplyr::all_of(col_keep)) |>
-        dplyr::mutate("id" := as.factor(.data[["id"]]))
+        dplyr::mutate("id" := as.integer(.data[["id"]]))
 
       subjects = dplyr::left_join(params, iCov, by="id")
+
+      # We also set iiv to 0 to get typical values when simulating 1 subject:
+      if(nsub == 1){
+        if(length(rx_details[["elements"]][["iiv"]])>0){
+          for(tmpiiv in rx_details[["elements"]][["iiv"]]){
+            subjects[[tmpiiv]] = 0
+          }
+        }
+      }
       #-----------------------------------------------------------------
     }
 
 
   } else {
     isgood   = FALSE
-    msgs = c(msgs, "rxode2 not installed")
+    msgs = c(msgs, "rxode2 family of tools not installed")
   }
 
   res = list(subjects   = subjects,
@@ -1440,12 +1537,12 @@ fetch_rxtc <- function(rx_details, sim){
     # This is a temporary (hopefully) fix until this feature is added:
     # https://github.com/nlmixr2/rxode2/issues/638
     rxtc   = as.data.frame(sim)
-   
+
     # Catching the case where there is 1 subject and no "id" column
     if(!("id" %in% names(rxtc))){
       rxtc[["id"]] = 1
     }
-   
+
    ## Merging any covariates from params
    #if(length(rx_details[["elements"]][["covariates"]])>0){
    #  params = as.data.frame(sim$params)
@@ -1463,3 +1560,298 @@ fetch_rxtc <- function(rx_details, sim){
 
 
 rxtc}
+
+
+#'@export
+#'@title Converts an rxode2 Object Into Specified Model Format
+#'@description If you have an rxode2 or nlmixr2 model object you can use this
+#'function to translate that object into other formats. See output_type below
+#'for the allowed formats.
+#'
+#'In order to do this you need at least one between-subject variability term
+#'and one endpoint. If these are missing then dummy values will be added. The
+#'dummy values for between-subject variablitiy are IIV will be
+#'\code{POP_RUMINATE}, \code{TV_RUMINATE}, and \code{ETA.RUMINATE}. The dummy
+#'terms for endpoints are \code{OUT_RUMINATE} and \code{add.OUT_RUMINATE}.
+#'
+#'@param object rxode2 model object
+#'@param out_type Output type (either "nonmem", "monolix")
+#'@param dataset Optional dataset
+#'@param export_name Basename for models used
+#'@param export_path Location to place output files (default \code{tempdir()})
+#'@return List with the following elements:
+#' \itemize{
+#'  \item{isgood:}     Return status of the function.
+#'  \item{msgs:}       Error or warning messages if any issues were encountered.
+#'  \item{files:}      If succesful this will contain a list with an entry for
+#'                     each file generated to support the requested format.
+#'                     the current file format. For example if "nonmem" was
+#'                     selected this will include elements for "ctl" and
+#'                     "csv". Each of these are lists with the following
+#'                     format:
+#'  \itemize{
+#'    \item{fn:}       Exported file name
+#'    \item{fn_full:}  Exported file name with the full path.
+#'    \item{contents:} Contents of the file.
+#'  }
+#'}
+#'@details
+#' Known issues: If you have specified bioavailability in the model, it will
+#' fail on the Monolix conversion.
+#'@examples
+#'
+#' library(ruminate)
+#'if( Sys.getenv("ruminate_rxfamily_found") == "TRUE"){
+#'  # First create an rxode2 model:
+#'  library(rxode2)
+#'  one.compartment <- function() {
+#'    rxode2::ini({
+#'      tka <- log(1.57); label("Ka")
+#'      tcl <- log(2.72); label("Cl")
+#'      tv <- log(31.5); label("V")
+#'      eta.ka ~ 0.6
+#'      eta.cl ~ 0.3
+#'      eta.v ~ 0.1
+#'      add.sd <- 0.7
+#'    })
+#'    # and a model block with the error specification and model specification
+#'    rxode2::model({
+#'      ka <- exp(tka + eta.ka)
+#'      cl <- exp(tcl + eta.cl)
+#'      v <- exp(tv + eta.v)
+#'      d/dt(depot) <- -ka * depot
+#'      d/dt(center) <- ka * depot - cl / v * center
+#'      cp <- center / v
+#'      cp ~ add(add.sd)
+#'    })
+#'  }
+#'
+#'  nmout = rx2other(one.compartment, out_type="nonmem")
+#'
+#' }
+rx2other <- function(object,
+                     out_type     = "nonmem",
+                     dataset      = NULL,
+                     export_name  = "my_model",
+                     export_path  = tempfile(pattern="dir")){
+
+  isgood    = TRUE
+  msgs      = c()
+  files     = list()
+
+  if( Sys.getenv("ruminate_rxfamily_found") == "TRUE"){
+    allowed_out_types = c("nonmem", "monolix")
+    if(out_type %in% allowed_out_types){
+      # Checks here to determine if object is a valid nlmxir2 object:
+      tcres = FM_tc(
+        cmd     = "rx_obj = rxode2::assertRxUi(object)",
+        capture = c("rx_obj"),
+        tc_env  = list(object   = object))
+
+      if(tcres[["isgood"]]){
+        rx_obj      = tcres[["capture"]][["rx_obj"]]
+        rx_details  = fetch_rxinfo(rx_obj)
+
+        #-----------------------------------------------------------------
+        # This checks if there is at least one IIV term. If not we add one
+        if(length(rx_details[["elements"]][["iiv"]])==0){
+          cmds = c(
+            paste0("rx_obj = rx_obj |>"),
+            paste0("  rxode2::model({POP_RUMINATE <- exp(TV_RUMINATE+ ETA.RUMINATE)}, append=TRUE)  |>"),
+            paste0("    rxode2::ini(TV_RUMINATE <-.1)"))
+
+          tcres = FM_tc(
+            cmd     = paste0(cmds, collapse="\n"),
+            capture = c("rx_obj"),
+            tc_env  = list(rx_obj   = rx_obj))
+
+          if(tcres[["isgood"]]){
+            rx_obj = tcres[["capture"]][["rx_obj"]]
+            msgs   = c(msgs,
+              "At least one between-subject variability term should be defined.",
+              "Adding the following dummy parameters:",
+              "  POP_RUMINATE",
+              "  TV_RUMINATE",
+              "  ETA.RUMINATE")
+          } else {
+            isgood = FALSE
+            msgs   = c(msgs,
+                       "Unable to add IIV.",
+                       tcres[["msgs"]])
+          }
+        }
+        #-----------------------------------------------------------------
+        # This checks if there is at least one output term. If not we add one
+        if(length(rx_details[["elements"]][["outputs"]]) == 0){
+          cmds = c(
+            paste0("rx_obj = rx_obj |>"),
+            paste0("    rxode2::model({OUT_RUMINATE <- ", rx_details[["elements"]][["states"]][1]),
+            paste0("           OUT_RUMINATE ~  add(add.OUT_RUMINTE)"),
+            paste0("           }, append=TRUE)  |>"),
+            paste0("    rxode2::ini(add.OUT_RUMINTE <-.1)")
+          )
+          tcres = FM_tc(
+            cmd     = paste0(cmds, collapse="\n"),
+            capture = c("rx_obj"),
+            tc_env  = list(rx_obj   = rx_obj))
+
+          if(tcres[["isgood"]]){
+            rx_obj = tcres[["capture"]][["rx_obj"]]
+            msgs   = c(msgs,
+              "At least one between-subject variability term should be defined.",
+              "Adding the following dummy output/endpoint and parameter:",
+              "  OUT_RUMINATE",
+              "  add.OUT_RUMINATE")
+          } else {
+            isgood = FALSE
+            msgs   = c(msgs,
+                       "Unable to add model output/endpoint.",
+                       tcres[["msgs"]])
+          }
+        }
+      } else {
+          isgood   = FALSE
+          msgs = c(msgs,
+                   paste0("The object input does not appear to be an rxode2 compatable object"),
+                   tcres[["msgs"]])
+      }
+
+
+      # If we made it this far then the object is an rxode2 object, the output
+      # type specified is correct and now we can start doing the good stuff.
+      if(isgood){
+        # We update the details in case we had to add anything above.
+        rx_details  = fetch_rxinfo(rx_obj)
+        # If no dataset has been specified we create a dummy dataset
+        if(is.null(dataset)){
+          dataset = rxode2::eventTable()
+
+          # Adding observations for each output
+          for(tmp_output in  rx_details[["elements"]][["outputs"]]){
+            dataset = dataset |> rxode2::et(id=c(1,2), time=c(0,1), evid=0, cmt=tmp_output)
+          }
+
+          # Making sure the dataset is a dataframe so we can manipulate 
+          # it like a dataframe below:
+          dataset = as.data.frame(dataset)
+          
+          # Adding default values for covariates
+          if(length(rx_details[["elements"]][["covariates"]]) > 0){
+            for(tmp_cov in rx_obj$allCovs){
+              dataset[[tmp_cov]] = 1
+            }
+          }
+          dataset[["dv"]]  = 0
+        }
+
+        oldwd = getwd()
+        on.exit(setwd(oldwd))
+        # we store everything in an temp subdir so that
+        # file naming will be consistent
+        export_wd = export_path
+        if(!dir.exists(export_wd)){
+          dir.create(export_wd, recursive=TRUE)
+        }
+        setwd(export_wd)
+
+        if(out_type == "nonmem"){
+          #res = nlmixr2::nlmixr2(rx_obj, dataset, "nonmem",  babelmixr2::nonmemControl(modelName=export_name, runCommand=NA))
+
+          cmd = 'res = suppressMessages(suppressWarnings(nlmixr2::nlmixr2(rx_obj, dataset, "nonmem", babelmixr2::nonmemControl(modelName=export_name, runCommand=NA))))'
+          tcres = FM_tc(
+            cmd     = cmd,
+            capture = c("res"),
+            tc_env  = list(export_name   = export_name,
+                           rx_obj        = rx_obj,
+                           dataset       = dataset))
+
+          # Only if successful do we package up the output files
+          if(tcres[["isgood"]]){
+            files = list(
+              ctl = list(fn       = paste0(export_name,".nmctl"),
+                         fn_full  = file.path(export_wd, paste0(export_name,"-nonmem"), paste0(export_name,".nmctl")),
+                         contents = c()),
+              csv = list(fn       = paste0(export_name,".csv"),
+                         fn_full  = file.path(export_wd, paste0(export_name,"-nonmem"), paste0(export_name,".csv")),
+                         contents = c())
+            )
+          }
+        }
+
+        if(out_type == "monolix"){
+          cmd = 'res = suppressMessages(suppressWarnings(nlmixr2::nlmixr2(rx_obj, dataset, "monolix", babelmixr2::monolixControl(modelName=export_name, runCommand=NA))))'
+          tcres = FM_tc(
+            cmd     = cmd,
+            capture = c("res"),
+            tc_env  = list(export_name   = export_name,
+                           rx_obj        = rx_obj,
+                           dataset       = dataset))
+
+          # Only if successful do we package up the output files
+          if(tcres[["isgood"]]){
+            files = list(
+              mlxtran = list(
+                         fn       = paste0(export_name,"-monolix.mlxtran"),
+                         fn_full  = file.path(export_wd, paste0(export_name,"-monolix.mlxtran")),
+                         contents = c()),
+              txt     = list(
+                         fn       = paste0(export_name,"-monolix.txt"),
+                         fn_full  = file.path(export_wd, paste0(export_name,"-monolix.txt")),
+                         contents = c()),
+              csv = list(fn       = paste0(export_name,"-monolix.csv"),
+                         fn_full  = file.path(export_wd, paste0(export_name,"-monolix.csv")),
+                         contents = c())
+            )
+          }
+        }
+
+        # If either failed we want to package that failure up as well.
+        if(!tcres[["isgood"]]){
+          isgood = FALSE
+          msgs = c(msgs, tcres[["msgs"]])
+
+          # Creating a text file with the errors that were encountered:
+          fn_full = file.path(export_wd, paste0(export_name,"-error.txt"))
+
+          fileConn<-file(fn_full)
+          writeLines(c(paste0("Error generating ",out_type ," output."),
+                       "See below for details: ",
+                       tcres[["msgs"]]), fileConn)
+          close(fileConn)
+
+          files = list(
+            txt = list(fn       = paste0(export_name,"-error.txt"),
+                       fn_full  = fn_full,
+                       contents = c()))
+        }
+
+        # Reading in any contents
+        for(tmp_file in names(files)){
+         if(file.exists(files[[tmp_file]][["fn_full"]])){
+            files[[tmp_file]][["contents"]] = paste0(readLines( files[[tmp_file]][["fn_full"]]), collapse="\n")
+          } else {
+            isgood = FALSE
+            msgs   = c(msgs, paste0(out_type, ": ",files[[tmp_file]][["fn_full"]], "file not found"))
+          }
+        }
+
+        # Getting back to the correct working directory
+        setwd(oldwd)
+      }
+    } else {
+      isgood   = FALSE
+      msgs = c(msgs, paste0("invalide output type: ", out_type))
+      msgs = c(msgs, paste0("allowed types are:    ", paste0(allowed_out_types, collapse=", ")))
+    }
+  } else {
+    isgood   = FALSE
+    msgs = c(msgs, "rxode2 family of tools not installed")
+  }
+
+
+  res = list(
+    isgood    = isgood,
+    msgs      = msgs,
+    files     = files)
+res}
+

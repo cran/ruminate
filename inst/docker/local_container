@@ -1,4 +1,5 @@
-FROM rocker/shiny-verse:4.2.0
+FROM rocker/shiny-verse:4.4.1
+#FROM rocker/shiny-verse:4.2.0
 #FROM rocker/shiny-verse:4.3.1
 
 # Installing packages
@@ -6,6 +7,7 @@ RUN apt-get update && apt-get -y install cmake
 RUN apt-get update && apt-get -y install curl
 RUN apt-get update && apt-get -y install libmpfr6
 RUN apt-get update && apt-get -y install libmpfr-dev
+RUN apt-get update && apt-get -y install vim
 
 # Install R packages
 RUN curl https://raw.githubusercontent.com/john-harrold/ruminate/main/inst/docker/install_packages.R --output /tmp/install_packages.R
@@ -16,7 +18,7 @@ RUN touch /srv/shiny-server/DEPLOYED
 
 # Making the ruminate App the main app for the site:
 RUN rm 'srv/shiny-server/index.html'
-RUN R -e "file.copy(system.file(package='ruminate', 'templates', 'ruminate.R'), '/srv/shiny-server/App.R')"
+RUN R -e "file.copy(system.file(package='ruminate', 'templates', 'ruminate_devel.R'), '/srv/shiny-server/App.R')"
 
 # Creating setup script to define options for the server
 RUN echo 'options(shiny.maxRequestSize = 20 * 1024^2)' >> 'srv/shiny-server/SETUP.R'

@@ -10,6 +10,10 @@ library(shinydashboard)
 library(prompter)
 #library(utils)
 
+if(is_installed("rxode2")){
+  library(rxode2)
+}
+
 tags$style("@import url(https://use.fontawesome.com/releases/v6.4.0/css/all.css);")
 
 # You can copy these locally and customize them for your own needs. Simply
@@ -28,16 +32,17 @@ if(!exists("deployed")){
   deployed = FALSE
 }
 
-# If the SETUP.R file exists we source it 
-if(file.exists("SETUP.R")){
-  source("SETUP.R")
-}
-
-
 # If the DEPLOYED file marker existrs we set deployed to TRUE
 if(file.exists("DEPLOYED")){
   deployed = TRUE
 }
+
+
+# If the SETUP.R file exists we source it
+if(file.exists("SETUP.R")){
+  source("SETUP.R")
+}
+
 
 CSS <- "
 .wrapfig {
@@ -112,14 +117,20 @@ ui <- shinydashboard::dashboardPage(
                ),
        shinydashboard::tabItem(tabName="model",
                shinydashboard::box(title="Build ODE-Based PK/PD Models", width=12,
-               fluidRow( 
+               fluidRow(
                column(width=12,
+               tagList(tags$b("This module is currently under development. Due to the experimental nature some portions may change. If you run into any issues please report them on the ", tags$a("ruminate issues", href=issue_url), "page.")),
+               tags$br(),
+               tags$br(),
                htmlOutput(NS("MB",  "MB_ui_compact")))))
                ),
        shinydashboard::tabItem(tabName="trials",
                shinydashboard::box(title="Define and Simulate Cohorts", width=12,
-               fluidRow( 
+               fluidRow(
                column(width=12,
+               tagList(tags$b("This module is currently under development. Due to the experimental nature some portions may change. If you run into any issues please report them on the ", tags$a("ruminate issues", href=issue_url), "page.")),
+               tags$br(),
+               tags$br(),
                htmlOutput(NS("CTS",  "CTS_ui_compact")))))
                ),
        shinydashboard::tabItem(tabName="loadsave",
@@ -136,6 +147,7 @@ ui <- shinydashboard::dashboardPage(
                        htmlOutput(NS("UD", "ui_ud_load_data"))),
                        htmlOutput(NS("UD", "ui_ud_clean")),
                        htmlOutput(NS("UD", "ui_ud_select_sheets")),
+                       htmlOutput(NS("UD", "ui_ud_workflows")),
                        htmlOutput(NS("UD", "ui_ud_text_load_result"))),
                      column(width=6,
                          tags$p(
@@ -214,22 +226,26 @@ server <- function(input, output, session) {
   react_FM = reactiveValues()
 
   # Module IDs and the order they are needed for code generation
-  mod_ids = c("UD", "DW", "FG", "NCA", "MB")
+  mod_ids = c("UD", "DW", "FG", "NCA", "MB", "CTS")
 
   # If the ftmptest file is present we load test data
   if(file.exists(ftmptest)){
-    NCA_test_mksession(
-      session,
-      id     = "NCA",
-      id_UD  = "UD",
-      id_DW  = "DW",
-      id_ASM = "ASM"
-    )
-    CTS_test_mksession(
-      session,
-      full_session=TRUE
-    )
+    sources = c(system.file(package="formods",  "preload", "ASM_preload.yaml"),
+                system.file(package="formods",  "preload", "UD_preload.yaml"),
+                system.file(package="formods",  "preload", "FG_preload.yaml"),
+                system.file(package="formods",  "preload", "DW_preload.yaml"),
+                system.file(package="ruminate", "preload", "NCA_preload.yaml"),
+                system.file(package="ruminate", "preload", "MB_preload.yaml"),
+                system.file(package="ruminate", "preload", "CTS_preload.yaml"))
+
+    res = FM_app_preload(session=session, sources=sources, react_state=react_FM)
+  # Otherwise we look for a preload file and load that if it exists
+  } else if(file.exists("preload.yaml")){
+    shinybusy::show_modal_spinner(text="Preloading analysis, be patient", session=session)
+    res = FM_app_preload(session=session, sources="preload.yaml")
+    shinybusy::remove_modal_spinner(session = session)
   }
+
 
   # Module servers
   formods::ASM_Server( id="ASM",
@@ -255,6 +271,7 @@ server <- function(input, output, session) {
                        react_state      = react_FM,
                        MOD_yaml_file    = FG.yaml,
                        FM_yaml_file     = formods.yaml)
+
   ruminate::NCA_Server(id    ="NCA", id_ASM = "ASM",
                        id_UD = "UD", id_DW  = "DW",
                        deployed         = deployed,
@@ -262,13 +279,13 @@ server <- function(input, output, session) {
                        MOD_yaml_file    = NCA.yaml,
                        FM_yaml_file     = formods.yaml)
 
-  ruminate::MB_Server(id="MB", id_ASM = "ASM", 
+  ruminate::MB_Server(id="MB", id_ASM = "ASM",
                       deployed         = deployed,
                       react_state      = react_FM,
                       MOD_yaml_file    = MB.yaml,
                       FM_yaml_file     = formods.yaml)
 
-  ruminate::CTS_Server(id="CTS", id_ASM = "ASM", 
+  ruminate::CTS_Server(id="CTS", id_ASM = "ASM",
                       deployed         = deployed,
                       react_state      = react_FM,
                       MOD_yaml_file    = CTS.yaml,

@@ -32,23 +32,24 @@ if(!exists("deployed")){
   deployed = FALSE
 }
 
-# Making sure that the run_dev object is created
-if(file.exists(file.path(tempdir(), "RUMINTE_DEVELOPMENT"))){
-  run_dev  = TRUE
-}else{
-  run_dev  = FALSE
+# If the DEPLOYED file marker existrs we set deployed to TRUE
+if(file.exists("DEPLOYED")){
+  deployed = TRUE
 }
 
-# If the SETUP.R file exists we source it 
+# # Making sure that the run_dev object is created
+# if(file.exists(file.path(tempdir(), "RUMINTE_DEVELOPMENT"))){
+#   run_dev  = TRUE
+# }else{
+#   run_dev  = FALSE
+# }
+
+# If the SETUP.R file exists we source it
 if(file.exists("SETUP.R")){
   source("SETUP.R")
 }
 
 
-# If the DEPLOYED file marker existrs we set deployed to TRUE
-if(file.exists("DEPLOYED")){
-  deployed = TRUE
-}
 
 CSS <- "
 .wrapfig {
@@ -112,7 +113,7 @@ ui <- shinydashboard::dashboardPage(
   ),
     shinydashboard::tabItems(
        shinydashboard::tabItem(tabName="nca",
-               shinydashboard::box(title="Run Non-Compartmental Analysis", width=12,
+               shinydashboard::box(title="Non-Compartmental Analysis", width=12,
                fluidRow( prompter::use_prompt(),
                column(width=12,
                htmlOutput(NS("NCA",  "NCA_ui_compact")))))
@@ -131,6 +132,7 @@ ui <- shinydashboard::dashboardPage(
                        htmlOutput(NS("UD", "ui_ud_load_data"))),
                        htmlOutput(NS("UD", "ui_ud_clean")),
                        htmlOutput(NS("UD", "ui_ud_select_sheets")),
+                       htmlOutput(NS("UD", "ui_ud_workflows")),
                        htmlOutput(NS("UD", "ui_ud_text_load_result"))),
                      column(width=6,
                          tags$p(
@@ -213,13 +215,18 @@ server <- function(input, output, session) {
 
   # If the ftmptest file is present we load test data
   if(file.exists(ftmptest)){
-    NCA_test_mksession(
-      session,
-      id     = "NCA",
-      id_UD  = "UD",
-      id_DW  = "DW",
-      id_ASM = "ASM"
-    )
+    sources = c(system.file(package="formods",  "preload", "ASM_preload.yaml"),
+                system.file(package="formods",  "preload", "UD_preload.yaml"),
+                system.file(package="formods",  "preload", "FG_preload.yaml"),
+                system.file(package="formods",  "preload", "DW_preload.yaml"),
+                system.file(package="ruminate", "preload", "NCA_preload.yaml"))
+
+    res = FM_app_preload(session=session, sources=sources)
+  # Otherwise we look for a preload file and load that if it exists
+  } else if(file.exists("preload.yaml")){
+    shinybusy::show_modal_spinner(text="Preloading analysis, be patient", session=session)
+    res = FM_app_preload(session=session, sources="preload.yaml")
+    shinybusy::remove_modal_spinner(session = session)
   }
 
   # Module servers

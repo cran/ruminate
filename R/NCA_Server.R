@@ -3247,6 +3247,8 @@ NCA_fetch_state = function(id, input, session,
         # Messaging detected change
         if(has_changed(ui_val  = state[["NCA"]][["ui"]][[ui_name]],
                        old_val = current_ana[[ana_name]])){
+
+
           formods::FM_le(state, paste0("setting analysis: ", ana_name, " = ", paste(state[["NCA"]][["ui"]][[ui_name]], collapse=", ")))
         }
 
@@ -3464,8 +3466,6 @@ NCA_fetch_state = function(id, input, session,
       (!fetch_hold(state, "select_current_ana"))){
 
     # Changing the current view to the one selected in the UI
-    # JMH create NCA_mkactive_ana here to set active
-    # state[["NCA"]][["current_ana"]]  =  state[["NCA"]][["ui"]][["select_current_ana"]]
     state = NCA_mkactive_ana(state, state[["NCA"]][["ui"]][["select_current_ana"]])
     state = set_hold(state)
     # browser()
@@ -3894,7 +3894,8 @@ code}
 #'will be reported. Those not in a good state will be ignored.
 #'@param state NCA state from \code{NCA_fetch_state()}
 #'@param rpt Report with the current content of the report which will be appended to in
-#'this function. For details on the structure see the documentation for \code{\link[formods]{FM_generate_report}}.
+#'this function. For details on the structure see the documentation for
+#' \code{\link[formods:FM_generate_report]{formods::FM_generate_report()}}
 #'@param rpttype Type of report to generate (supported "xlsx", "pptx", "docx").
 #'@param gen_code_only Boolean value indicating that only code should be
 #'generated (\code{FALSE}).
@@ -3906,27 +3907,28 @@ code}
 #'  \item{msgs:}      Messages to be passed back to the user.
 #'  \item{rpt:}       Report with any additions passed back to the user.
 #'}
-#'@seealso \code{\link{FM_generate_report}}
+#'@seealso
+#'\code{\link[formods:FM_generate_report]{formods::FM_generate_report()}}
 #'@examples
-#'# We need a state object to use below
-#'sess_res = NCA_test_mksession(session=list(), full_session=FALSE)
-#'state = sess_res$state
+#' # We need a state object to use below
+#' sess_res = NCA_test_mksession()
+#' state = sess_res$state
 #'
-#'# here we need an empty report object for tabular data
-#'rpt = list(summary = list(), sheets=list())
+#' # here we need an empty report object for tabular data
+#' rpt = list(summary = list(), sheets=list())
 #'
-#'# Now we append the report indicating we want
-#'# Excel output:
-#'rpt_res = NCA_append_report(state,
-#'  rpt           = rpt,
-#'  rpttype       = "xlsx",
-#'  gen_code_only = TRUE)
+#' # Now we append the report indicating we want
+#' # Excel output:
+#' rpt_res = NCA_append_report(state,
+#'   rpt           = rpt,
+#'   rpttype       = "xlsx",
+#'   gen_code_only = TRUE)
 #'
-#'# Shows if report elements are present
-#'rpt_res$hasrptele
+#' # Shows if report elements are present
+#' rpt_res$hasrptele
 #'
-#'# Code chunk to generate report element
-#'cat(paste(rpt_res$code, collapse="\n"))
+#' # Code chunk to generate report element
+#' cat(paste(rpt_res$code, collapse="\n"))
 NCA_append_report = function(state, rpt, rpttype, gen_code_only=FALSE){
 
   isgood    = TRUE
@@ -4403,9 +4405,9 @@ res}
 #'  }
 #'}
 #'@examples
-#'# We need a state object to use below
-#'sess_res = NCA_test_mksession(session=list(), full_session=FALSE)
-#'state = sess_res$state
+#' # We need a state object to use below
+#' sess_res = NCA_test_mksession()
+#' state = sess_res$state
 #'
 #'myDs = NCA_fetch_ds(state)
 NCA_fetch_ds = function(state){
@@ -4961,7 +4963,7 @@ NCA_fetch_np_meta = function(
       if(system.file(package="cli")==""){
         message(msg)
       } else {
-        FM_message(msg, entry_type="danger")
+        FM_message(msg, entry_type="warning")
       }
     }
   }
@@ -4972,7 +4974,7 @@ res}
 
 #'@title Adds Analysis Interval to Current Analysis
 #'@description Takes the start time, stop time, and NCA parameters and adds
-#'them to the intervals table
+#'them to the intervals table of the current analysis
 #'@param state NCA state from \code{NCA_fetch_state()}
 #'@param interval_start Interval start time (numeric).
 #'@param interval_stop  Interval stop time (numeric).
@@ -5101,7 +5103,7 @@ NCA_process_current_ana = function(state){
 
       # Mixed options can be strings or numbers so we calculate the
       # numeric value here to use below
-      opt_value_num  = as.numeric(as.character(opt_value))
+      opt_value_num  = suppressWarnings(as.numeric(as.character(opt_value)))
       opt_value_str  =            as.character(opt_value)
       if(opt_pknca %in% c("conc.na")){
         OPT_ERR = FALSE
@@ -5262,26 +5264,14 @@ current_ana}
 #'@description Takes the current analysis in the state object and creates the
 #'code to run the analysis
 #'@param state NCA state from \code{NCA_fetch_state()}
-#' JMH update the return list below
 #'@return NCA state with the NCA for the current analysis built.
 #'@examples
-#'# Module IDs
-#'id     = "NCA"
-#'id_UD  = "UD"
-#'id_DW  = "DW"
-#'id_ASM = "ASM"
-#'
 #'# We need a module variables to be defined
-#'sess_res = NCA_test_mksession(session=list(),
-#'      id     = id,
-#'      id_UD  = id_UD,
-#'      id_DW  = id_DW,
-#'      id_ASM = id_ASM,
-#'      full_session=FALSE)
+#' sess_res = NCA_test_mksession()
 #'
-#'state = sess_res$state
+#' state = sess_res$state
 #'
-#'state = nca_builder(state)
+#' state = nca_builder(state)
 nca_builder = function(state){
 
   isgood             = TRUE
@@ -5652,7 +5642,7 @@ nca_builder = function(state){
       )
 
     # code for figures and tables
-    # JMH add other UI optoins to function calls here:
+    # JMH add other UI options to function calls here:
     code_fg_ind_obs   = c(
       "",
       "# Generating figures of indiviudal profiles",
@@ -5777,6 +5767,7 @@ state}
 #'@param components List of components to run. By default it will run all of
 #'the following. If you just need to regenerate a figure based on the current
 #'nca results you can just specify that component. These are the valid
+#'@param verbose Logical to enable or disable messaging
 #'components:
 #' \itemize{
 #'  \item{nca:}               Run NCA analysis
@@ -5791,17 +5782,18 @@ state}
 #'  \item{nca_res:}   PKNCA results if run was successful.
 #'}
 #'@examples
-#'# We need a state object to use below
-#'sess_res = NCA_test_mksession(session=list(), full_session=FALSE)
-#'state = sess_res$state
+#' # We need a state object to use below
+#' sess_res = NCA_test_mksession()
+#' state = sess_res$state
 #'
-#'state = run_nca_components(state, components="tb_ind_params")
+#' state = run_nca_components(state, components="tb_ind_params")
 run_nca_components = function(
   state,
   components=c("nca",
                "fg_ind_obs",
                "tb_ind_obs",
-               "tb_ind_params")){
+               "tb_ind_params"),
+  verbose=TRUE){
 
   # Generating code. The following will be added
   # to the current analysis
@@ -5976,11 +5968,17 @@ run_nca_components = function(
   #If there is something wrong we set that in the messages
   if(!current_ana[["isgood"]]){
     state = formods::FM_set_ui_msg(state, msgs)
-    FM_le(state, msgs, entry_type="danger")
+    if(verbose){
+      FM_le(state, msgs, entry_type="danger")
+    }
   }
+
+  # Storing the messages
+  current_ana[["msgs"]] = msgs
 
   # Setting the analysis checksum based on the objs portion.
   current_ana[["checksum"]] = digest::digest(current_ana[["objs"]], algo=c("md5"))
+
 
   # Saving any changes to the analysis
   state = NCA_set_current_ana(state, current_ana)
@@ -5991,8 +5989,9 @@ run_nca_components = function(
     all_checksum = paste0(all_checksum, ana_id, ":", state[["NCA"]][["anas"]][[ana_id]][["checksum"]], ":")
   }
   state[["NCA"]][["checksum"]] = digest::digest(all_checksum, algo=c("md5"))
-  FM_le(state, paste0("module checksum updated:", state[["NCA"]][["checksum"]]))
-
+  if(verbose){
+    FM_le(state, paste0("module checksum updated:", state[["NCA"]][["checksum"]]))
+  }
 
 state}
 
@@ -6026,30 +6025,20 @@ state}
 #'   format from \code{\link[onbrand]{build_span}}.
 #'}
 #'@examples
-#'id     = "NCA"
-#'id_UD  = "UD"
-#'id_DW  = "DW"
-#'id_ASM = "ASM"
+#' # We need a state variable to be define
+#' sess_res = NCA_test_mksession()
 #'
-#'# We need a state variable to be define
-#' sess_res = NCA_test_mksession(session=list(),
-#'      id     = id,
-#'      id_UD  = id_UD,
-#'      id_DW  = id_DW,
-#'      id_ASM = id_ASM,
-#'      full_session=FALSE)
+#' state = sess_res$state
 #'
-#'state = sess_res$state
+#' # Pulls out the active analysis
+#' current_ana = NCA_fetch_current_ana(state)
 #'
-#'# Pulls out the active analysis
-#'current_ana = NCA_fetch_current_ana(state)
+#' # This is the raw PKNCA output
+#' pknca_res = NCA_fetch_ana_pknca(state, current_ana)
 #'
-#'# This is the raw PKNCA output
-#'pknca_res = NCA_fetch_ana_pknca(state, current_ana)
-#'
-#'# Building the figure
-#'mk_res = mk_table_ind_obs(nca_res = pknca_res)
-#'mk_res$tables[["Table 1"]]$ft
+#' # Building the figure
+#' mk_res = mk_table_ind_obs(nca_res = pknca_res)
+#' mk_res$tables[["Table 1"]]$ft
 mk_table_ind_obs = function(
   nca_res   ,
   obnd         = NULL,
@@ -6250,30 +6239,20 @@ res}
 #' \item{notes:} Placeholder for future notes, but NULL now.
 #'}
 #'@examples
-#'id     = "NCA"
-#'id_UD  = "UD"
-#'id_DW  = "DW"
-#'id_ASM = "ASM"
+#' # We need a state variable to be define
+#' sess_res = NCA_test_mksession()
 #'
-#'# We need a state variable to be define
-#' sess_res = NCA_test_mksession(session=list(),
-#'      id     = id,
-#'      id_UD  = id_UD,
-#'      id_DW  = id_DW,
-#'      id_ASM = id_ASM,
-#'      full_session=FALSE)
+#' state = sess_res$state
 #'
-#'state = sess_res$state
+#' # Pulls out the active analysis
+#' current_ana = NCA_fetch_current_ana(state)
 #'
-#'# Pulls out the active analysis
-#'current_ana = NCA_fetch_current_ana(state)
+#' # This is the raw PKNCA output
+#' pknca_res = NCA_fetch_ana_pknca(state, current_ana)
 #'
-#'# This is the raw PKNCA output
-#'pknca_res = NCA_fetch_ana_pknca(state, current_ana)
-#'
-#'# Building the figure
-#'mk_res = mk_figure_ind_obs(nca_res = pknca_res)
-#'mk_res$figures$Figure_1$gg
+#' # Building the figure
+#' mk_res = mk_figure_ind_obs(nca_res = pknca_res)
+#' mk_res$figures$Figure_1$gg
 mk_figure_ind_obs = function(
   nca_res       ,
   OBS_LAB         = "Concentration ===CONCUNITS===",
@@ -6458,9 +6437,9 @@ res}
 #'  \item{msgs:}     Messages to be passed back to the user.
 #'}
 #'@examples
-#'# We need a state object to use below
-#'sess_res = NCA_test_mksession(session=list(), full_session=FALSE)
-#'state = sess_res$state
+#' # We need a state object to use below
+#' sess_res = NCA_test_mksession()
+#' state = sess_res$state
 #'
 #' # Current active table:
 #' res = NCA_fetch_current_obj(state, "table")
@@ -6607,33 +6586,23 @@ obj}
 #'   format from \code{\link[onbrand]{build_span}}.
 #'}
 #'@examples
-#'id     = "NCA"
-#'id_UD  = "UD"
-#'id_DW  = "DW"
-#'id_ASM = "ASM"
+#' # We need a state variable to be define
+#' sess_res = NCA_test_mksession()
 #'
-#'# We need a state variable to be define
-#' sess_res = NCA_test_mksession(session=list(),
-#'      id     = id,
-#'      id_UD  = id_UD,
-#'      id_DW  = id_DW,
-#'      id_ASM = id_ASM,
-#'      full_session=FALSE)
+#' state = sess_res$state
 #'
-#'state = sess_res$state
+#' # Pulls out the active analysis
+#' current_ana = NCA_fetch_current_ana(state)
 #'
-#'# Pulls out the active analysis
-#'current_ana = NCA_fetch_current_ana(state)
+#' # This is the raw PKNCA output
+#' pknca_res = NCA_fetch_ana_pknca(state, current_ana)
 #'
-#'# This is the raw PKNCA output
-#'pknca_res = NCA_fetch_ana_pknca(state, current_ana)
+#' # Parameter reporting details from the ruminate configuration
+#' nps  = state[["NCA"]][["nca_parameters"]][["summary"]]
 #'
-#'# Parameter reporting details from the ruminate configuration
-#'nps  = state[["NCA"]][["nca_parameters"]][["summary"]]
-#'
-#'# Building the figure
-#'mk_res = mk_table_nca_params(nca_res = pknca_res, nps=nps, digits=3)
-#'mk_res$tables[["Table 1"]]$ft
+#' # Building the figure
+#' mk_res = mk_table_nca_params(nca_res = pknca_res, nps=nps, digits=3)
+#' mk_res$tables[["Table 1"]]$ft
 mk_table_nca_params = function(
   nca_res   ,
   type         = "individual",
@@ -6888,162 +6857,33 @@ res}
 #'@title Populate Session Data for Module Testing
 #'@description Populates the supplied session variable for testing.
 #'@param session Shiny session variable (in app) or a list (outside of app)
-#'@param id An ID string that corresponds with the ID used to call the modules UI elements
-#'@param id_UD An ID string that corresponds with the ID used to call the UD modules UI elements
-#'@param id_DW An ID string that corresponds with the ID used to call the DW modules UI elements
-#'@param id_ASM An ID string that corresponds with the ID used to call the ASM modules UI elements
-#'@param full_session  Boolean to indicate if the full test session should be created (default \code{TRUE}).
-#'@return list with the following elements
-#' \itemize{
-#'   \item{isgood:} Boolean indicating the exit status of the function.
-#'   \item{session:} The value Shiny session variable (in app) or a list (outside of app) after initialization.
-#'   \item{input:} The value of the shiny input at the end of the session initialization.
-#'   \item{state:} App state.
-#'   \item{rsc:} The \code{react_state} components.
-#'}
+#'@param full    Boolean indicating if the full test session should be created
+#'@return The NCA portion of the `all_sess_res` returned from \code{\link[formods]{FM_app_preload}}
 #'@examples
-#'sess_res = NCA_test_mksession(session=list(), full_session=FALSE)
-NCA_test_mksession = function(session, id = "NCA", id_UD="UD", id_DW="DW", id_ASM="ASM", full_session=TRUE){
+#' session = shiny::MockShinySession$new()
+#' sess_res = NCA_test_mksession(session=session)
+#'@seealso \code{\link[formods]{FM_app_preload}}
+NCA_test_mksession = function(session=list(), full=FALSE){
 
   isgood = TRUE
   rsc    = NULL
   input  = list()
 
-  # Populating the session with UD and DW components
-  sess_res = formods::DW_test_mksession(session=session, id=id_DW, id_UD = id_UD)
-  if(!("ShinySession" %in% class(session))){
-    session = sess_res[["session"]]
-  }
-
-  # When we dont want a full session we want to shrink the dataset to this
-  # will be faster on the CRAN win-builder system:
-  if(!full_session){
-    all_ids = unique(session[["userData"]][["FM"]][["FM_DW"]][["DW"]][["views"]][["view_7"]][["WDS"]][["ID"]])
-    nkeep = 3
-    if(length(all_ids) > nkeep){
-      keep_ids = all_ids[1:nkeep]
-    }else{
-      keep_ids = all_ids
-    }
-
-    bool_keep = session[["userData"]][["FM"]][["FM_DW"]][["DW"]][["views"]][["view_7"]][["WDS"]][["ID"]] %in% keep_ids
-
-    session[["userData"]][["FM"]][["FM_DW"]][["DW"]][["views"]][["view_7"]][["WDS"]] =
-    session[["userData"]][["FM"]][["FM_DW"]][["DW"]][["views"]][["view_7"]][["WDS"]][bool_keep, ]
-  }
-
-  # Pulling out the react state components
-  rsc         = sess_res$rsc
-  react_state = rsc
-
-  # YAML files for the fetch calls below
-  FM_yaml_file  = system.file(package = "formods",  "templates", "formods.yaml")
-  MOD_yaml_file = system.file(package = "ruminate", "templates", "NCA.yaml")
-
-
-  # Creating an empty state object
-  state = NCA_fetch_state(id             = id,
-                         input           = input,
-                         session         = session,
-                         FM_yaml_file    = FM_yaml_file,
-                         MOD_yaml_file   = MOD_yaml_file,
-                         id_ASM          = id_ASM,
-                         id_UD           = id_UD,
-                         id_DW           = id_DW,
-                         react_state     = react_state)
-
-  #------------------------------------
-  # First First dose PK only with BQL values
-  current_ana = NCA_fetch_current_ana(state)
-  # Setting the dataset:
-  current_ana[["ana_dsview"]] = "DW_myDS_7"
-
-  # Defining the columns
-  current_ana[["col_id"]]           = "ID"
-  current_ana[["col_time"]]         = "TIME_DY"
-  current_ana[["col_ntime"]]        = "NTIME_DY"
-  current_ana[["col_conc"]]         = "DV"
-  current_ana[["col_evid"]]         = "EVID"
-  current_ana[["col_dose"]]         = "DOSE"
-  current_ana[["col_route"]]        = "ROUTE"
-  current_ana[["col_cycle"]]        = "DOSE_NUM"
-  current_ana[["col_analyte"]]      = "N/A"
-  current_ana[["col_dur"]]          = "N/A"
-
-  # Defining where how dosing should be found:
-  current_ana[["dose_from"]]        = "cols"
-
-  # Setting the caption/analysis key
-  current_ana[["key"]]              = "PK NCA Analysis Example"
-
-  # This will update the changes to the current analysis:
-  state = NCA_set_current_ana(state, current_ana)
-
-  # This will load the scenario
-  state = NCA_load_scenario(state, "sd_iv")
-
-  # And then this will run the intervals in the scenario:
-  state = run_nca_components(state)
-
-
-  #------------------------------------
-  # First First dose PK/PD with BQL values
-  # Create a new analysis
-  if(full_session){
-    state       = NCA_new_ana(state)
-    current_ana = NCA_fetch_current_ana(state)
-    # Setting the dataset:
-    current_ana[["ana_dsview"]] = "DW_myDS_6"
-
-    # Setting the caption/analysis key
-    current_ana[["key"]]              = "PK/PD NCA Analysis Example"
-
-    # Defining the columns
-    current_ana[["col_id"]]           = "ID"
-    current_ana[["col_time"]]         = "TIME_DY"
-    current_ana[["col_ntime"]]        = "NTIME_DY"
-    current_ana[["col_conc"]]         = "DV"
-    current_ana[["col_dose"]]         = "DOSE"
-    current_ana[["col_evid"]]         = "EVID"
-    current_ana[["col_route"]]        = "ROUTE"
-    current_ana[["col_cycle"]]        = "DOSE_NUM"
-    current_ana[["col_analyte"]]      = "CMT"    #Analyte
-    current_ana[["col_dur"]]          = "N/A"    #Duration
-
-    # Defining where how dosing should be found:
-    current_ana[["dose_from"]]        = "cols"
-
-    # This will update the changes to the current analysis:
-    state = NCA_set_current_ana(state, current_ana)
-
-    # This will load the scenario
-    state = NCA_load_scenario(state, "sd_iv")
-
-    # And then this will run the intervals in the scenario:
-    state = run_nca_components(state)
-  }
-  #------------------------------------
-  # This functions works both in a shiny app and outside of one
-  # if we're in a shiny app then the 'session' then the class of
-  # session will be a ShinySession. Otherwise it'll be a list if
-  # we're not in the app (ie just running test examples) then
-  # we need to set the state manually
-  if(("ShinySession" %in% class(session))){
-    FM_set_mod_state(session, id, state)
+  if(full){
+    sources = c(system.file(package="formods",  "preload", "ASM_preload.yaml"),
+                system.file(package="formods",  "preload", "UD_preload.yaml"),
+                system.file(package="formods",  "preload", "DW_preload.yaml"),
+                system.file(package="ruminate", "preload", "NCA_preload.yaml"))
   } else {
-    session = FM_set_mod_state(session, id, state)
+    sources = c(system.file(package="formods",  "preload", "ASM_preload.yaml"),
+                system.file(package="formods",  "preload", "UD_preload.yaml"),
+                system.file(package="formods",  "preload", "DW_preload.yaml"),
+                system.file(package="ruminate", "preload", "NCA_preload_minimal.yaml"))
   }
 
-  # Required for proper reaction:
-  #rsc[[id]]  = list(FG = list(checksum=state[["FG"]][["checksum"]]))
+  res = FM_app_preload(session=session, sources=sources)
+  res = res[["all_sess_res"]][["NCA"]]
 
-  res = list(
-    isgood  = isgood,
-    session = session,
-    input   = input,
-    state   = state,
-    rsc     = rsc
-  )
 res}
 
 #'@title Loads Pre-Defined Scenario
@@ -7354,3 +7194,418 @@ NCA_mkactive_ana  = function(state, ana_id){
     #state = NCA_set_current_ana(state, current_ana)
 
 state}
+
+
+#'@export
+#'@title Preload Data for NCA Module
+#'@description Populates the supplied session variable with information from
+#'list of sources.
+#'@param session     Shiny session variable (in app) or a list (outside of app)
+#'@param src_list    List of preload data (all read together with module IDs at the top level)
+#'@param yaml_res    List data from module yaml config
+#'@param mod_ID      Module ID of the module being loaded.
+#'@param react_state Reactive shiny object (in app) or a list (outside of app) used to trigger reactions.
+#'@param quickload   Logical \code{TRUE} to load reduced analysis \code{FALSE} to load the full analysis
+#'@return list with the following elements
+#' \itemize{
+#'   \item{isgood:}      Boolean indicating the exit status of the function.
+#'   \item{msgs:}        Messages to be passed back to the user.
+#'   \item{session:}     Session object
+#'   \item{input:}       The value of the shiny input at the end of the session initialization.
+#'   \item{state:}       App state.
+#'   \item{react_state:} The \code{react_state} components.
+#'}
+NCA_preload  = function(session, src_list, yaml_res, mod_ID=NULL, react_state = list(), quickload=FALSE){
+  isgood = TRUE
+  input  = list()
+  msgs   = c()
+  res    = c()
+
+
+  FM_yaml_file  = render_str(src_list[[mod_ID]][["fm_yaml"]])
+  MOD_yaml_file = render_str(src_list[[mod_ID]][["mod_yaml"]])
+  id_UD         = yaml_res[[mod_ID]][["mod_cfg"]][["MC"]][["module"]][["depends"]][["id_UD"]]
+  id_ASM        = yaml_res[[mod_ID]][["mod_cfg"]][["MC"]][["module"]][["depends"]][["id_ASM"]]
+  id_DW         = yaml_res[[mod_ID]][["mod_cfg"]][["MC"]][["module"]][["depends"]][["id_DW"]]
+
+  # Creating an empty state object
+  state = NCA_fetch_state(id              = mod_ID,
+                         input           = input,
+                         session         = session,
+                         FM_yaml_file    = FM_yaml_file,
+                         MOD_yaml_file   = MOD_yaml_file,
+                         id_ASM          = id_ASM,
+                         id_UD           = id_UD,
+                         id_DW           = id_DW,
+                         react_state     = react_state)
+
+  elements = src_list[[mod_ID]][["elements"]]
+
+  # Checks to see if we can add elements
+  ADD_ELEMENTS = TRUE
+  if(is.null(elements)){
+    ADD_ELEMENTS = FALSE
+  }
+
+
+  if(is.null(state[["NCA"]][["DSV"]][["hasds"]])){
+    ADD_ELEMENTS = FALSE
+  } else if(!state[["NCA"]][["DSV"]][["hasds"]]){
+    ADD_ELEMENTS = FALSE
+  }
+
+
+  if(ADD_ELEMENTS){
+    # All of the numeric IDs in the preload
+    enumeric    = c()
+
+    # Map between list index and internal figure ID
+    element_map = list()
+    for(ele_idx in 1:length(elements)){
+      enumeric = c(enumeric, elements[[ele_idx]][["element"]][["idx"]])
+      element_map[[ paste0("NCA_",elements[[ele_idx]][["element"]][["idx"]] )]] = ele_idx
+    }
+    # Creating empty fig placeholders
+    while(state[["NCA"]][["ana_cntr"]] < max(enumeric)){
+      state = NCA_new_ana(state)
+    }
+    # culling any unneeded views
+    for(ele_id  in names(state[["NCA"]][["anas"]])){
+      # This is a view that doesn't exist in elements so
+      # we need to cull it
+      if(!(ele_id  %in% names(element_map))){
+        # Setting the view to be deleted as the current view
+        state[["NCA"]][["anas"]][[ ele_id  ]] = NULL
+      }
+    }
+
+    # Available data sources
+    DSV = state[["NCA"]][["DSV"]]
+
+    # Below we process the different options in an element based on what they
+    # do.
+    # These are the names and ui_ids possible for analysis options:
+    ana_opt_names = as.vector(unlist(state[["NCA"]][["ui_ana_map"]]))
+    ana_opt_ui_ids  =            names(state[["NCA"]][["ui_ana_map"]])
+
+    # These are the names and ui_ids possible for NCA options:
+    nca_opt_names  =as.vector( unlist(lapply(state[["NCA"]][["nca_config"]][["default"]], '[[', "pknca_option")))
+    nca_opt_ui_ids =as.vector( unlist(lapply(state[["NCA"]][["nca_config"]][["default"]], '[[', "ui_id")))
+
+
+    # Now we have empty elements defined
+    for(ele_id in names(element_map)){
+      err_msg = c()
+      # Making the current element element id active
+      state[["NCA"]][["current_ana"]]  =  ele_id
+
+      # Pulling out the current element so we can populate it below
+      current_ele = NCA_fetch_current_ana(state)
+
+      # Getting the numeric position in the list corresponding
+      # to the current element id
+      ele_idx = element_map[[ele_id]]
+
+      ele_isgood = TRUE
+      formods::FM_le(state, paste0("loading element idx: ", ele_idx ))
+      # first we set the element name:
+      if(!is.null(elements[[ele_idx]][["element"]][["name"]])){
+        formods::FM_le(state, paste0("  -> setting name: ", elements[[ele_idx]][["element"]][["name"]]))
+        current_ele[["key"]] = elements[[ele_idx]][["element"]][["name"]]
+      }
+
+      # Setting any notes:
+      if(!is.null(elements[[ele_idx]][["element"]][["notes"]])){
+        FM_le(state, paste0("  -> notes found and set"))
+        current_ele[["notes"]] = elements[[ele_idx]][["element"]][["notes"]]
+      }
+
+      # Checking the specified nca_config options
+      if(!all(names(elements[[ele_idx]][["element"]][["nca_config"]]) %in% nca_opt_names)){
+        missing_nca_cfg =
+        names(elements[[ele_idx]][["element"]][["nca_config"]])[
+               !(names(elements[[ele_idx]][["element"]][["nca_config"]]) %in% nca_opt_names) ]
+
+        err_msg = c(err_msg,
+                    "The following nca_config options were specified",
+                    "but are not valid:",
+                    paste0(" -> ", paste0(missing_nca_cfg, collapse=", ")))
+        ele_isgood = FALSE
+      }
+
+      # Checking the specified ana_options
+      if(!all(names(elements[[ele_idx]][["element"]][["ana_options"]]) %in% ana_opt_names)){
+        missing_nca_cfg =
+        names(elements[[ele_idx]][["element"]][["ana_options"]])[
+               !(names(elements[[ele_idx]][["element"]][["ana_options"]]) %in% ana_opt_names) ]
+
+        err_msg = c(err_msg,
+                    "The following ana_options options were specified",
+                    "but are not valid:",
+                    paste0(" -> ", paste0(missing_nca_cfg, collapse=", ")))
+        ele_isgood = FALSE
+      }
+
+
+      # JMH Setting any element uis
+      #state[["NCA"]][["ui_ana_map"]]
+      #state[["NCA"]][["ui_ids"]]
+      #-------------------------------------------------------
+      # Defining the ana_options
+      for(ui_id in names(state[["NCA"]][["ui_ana_map"]])){
+        ui_name = state[["NCA"]][["ui_ana_map"]][[ui_id]]
+        # Here we check to see if the option is defined in the preload file.
+        # If it is we use that otherwise we use the
+        if(ui_name %in% names(elements[[ele_idx]][["element"]][["ana_options"]])){
+          current_ele[[ui_name]] = elements[[ele_idx]][["element"]][["ana_options"]][[ui_name]]
+        }
+      }
+
+      #-------------------------------------------------------
+      # Defining the nca_config options:
+      for(nca_opt in names(state[["NCA"]][["nca_config"]][["default"]])){
+
+        nca_opt_pknca_option = state[["NCA"]][["nca_config"]][["default"]][[nca_opt]][["pknca_option"]]
+        nca_opt_ui_id        = state[["NCA"]][["nca_config"]][["default"]][[nca_opt]][["ui_id"]]
+
+        # Here we check to see if the option is defined in the preload file.
+        # If it is we use that otherwise we use the default:
+        if(nca_opt_pknca_option %in% names(elements[[ele_idx]][["element"]][["nca_config"]])){
+          nca_opt_value = elements[[ele_idx]][["element"]][["nca_config"]][[ nca_opt_pknca_option]]
+        }else{
+          nca_opt_value = state[["NCA"]][["nca_config"]][["default"]][[nca_opt]][["value"]]
+        }
+
+        current_ele[["nca_config"]][[nca_opt]][["value"]] = nca_opt_value
+      }
+
+      # Attaching data source
+      if(!is.null(elements[[ele_idx]][["element"]][["data_source"]][["id"]]) &
+         !is.null(elements[[ele_idx]][["element"]][["data_source"]][["idx"]])){
+        tmp_DSV = DSV[["catalog"]][c(DSV[["catalog"]][["id"]]  == elements[[ele_idx]][["element"]][["data_source"]][["id"]] &
+                                     DSV[["catalog"]][["idx"]] == elements[[ele_idx]][["element"]][["data_source"]][["idx"]]), ]
+        if(nrow(tmp_DSV) == 1){
+          formods::FM_le(state, paste0("  -> setting data source: ", tmp_DSV[["object"]][1]) )
+          current_ele[["ana_dsview"]] = tmp_DSV[["object"]][1]
+        } else {
+          formods::FM_le(state, paste0("error locating data source, expecting 1 source found ", nrow(tmp_DSV)), entry_type="danger")
+        }
+      } else {
+        formods::FM_le(state, paste0("error missing either data source id or idx"), entry_type="danger")
+        ele_isgood = FALSE
+      }
+
+
+      # Saving the current element with any changes to the int
+      # applied
+      state = NCA_set_current_ana(state, current_ele)
+
+      # If the analysis is good we add the components
+      if(ele_isgood){
+        for(comp_idx in 1:length(elements[[ele_idx]][["element"]][["components"]])){
+
+          tmp_component = elements[[ele_idx]][["element"]][["components"]][[comp_idx]][["component"]]
+          add_component = TRUE
+          req_comp_opts    =c("nca_parameters", "start", "stop")
+
+          # here we're just running sanity checks for the component
+          if(!all(req_comp_opts    %in% names(tmp_component))){
+            ele_isgood      = FALSE
+            add_component   = FALSE
+            missing_opts    =
+              req_comp_opts[!(req_comp_opts %in% names(tmp_component))]
+            err_msg = c(err_msg,
+              paste0("element idx:  ",ele_idx, ", interval idx: ", comp_idx, ", missing option(s):" ),
+              paste0("  -> ", paste0(missing_opts, collapse=", "))
+              )
+          }
+
+          if(add_component && ele_isgood){
+            state = NCA_add_int(state=state,
+              interval_start = tmp_component[["start"]],
+              interval_stop  = tmp_component[["stop"]],
+              nca_parameters = tmp_component[["nca_parameters"]])
+          } else {
+            # if the component is broke then the whole thing is broke
+            isgood = FALSE
+          }
+        }
+      }
+
+
+      # If we made it this far then we can
+      if(ele_isgood){
+        # And then this will run the intervals in the scenario:
+        state = run_nca_components(state=state, verbose=FALSE)
+
+        # The results are stored in the current element we pull those out to
+        # make sure everything worked OK
+        current_ele = NCA_fetch_current_ana(state)
+        if(!current_ele[["isgood"]]){
+          err_msg = c(err_msg, current_ele[["msgs"]])
+          ele_isgood = FALSE
+        }
+
+        # Uncomment to debug and see NCA results
+        #tmp_ele = NCA_fetch_current_ana(state)
+        #tmp_ele[["nca_res"]]
+        #browser()
+      }
+
+      if(ele_isgood){
+        formods::FM_le(state,paste0("added element idx: ",ele_idx))
+      } else {
+        err_msg = c(
+          paste0("failed to add element idx: ",ele_idx),
+          err_msg)
+        msgs = c(msgs, err_msg)
+        formods::FM_le(state,err_msg,entry_type="danger")
+      }
+    }
+  }
+
+  formods::FM_le(state,paste0("module isgood: ",isgood))
+
+  if(formods::is_shiny(session)){
+    FM_set_mod_state(session, mod_ID, state)
+  } else {
+    session = FM_set_mod_state(session, mod_ID, state)
+  }
+
+  res = list(isgood      = isgood,
+             msgs        = msgs,
+             session     = session,
+             input       = input,
+             react_state = react_state,
+             state       = state)
+res}
+
+#'@export
+#'@title Make List of Current NCA State
+#'@description Reads in the app state from yaml files.
+#'@param state NCA state object
+#'@return list with the following elements
+#' \itemize{
+#'   \item{isgood:}       Boolean indicating the exit status of the function.
+#'   \item{msgs:}         Messages to be passed back to the user.
+#'   \item{yaml_list:}    Lists with preload components.
+#'}
+#'@examples
+#' sess_res = NCA_test_mksession()
+#' state = sess_res$state
+#' res = NCA_mk_preload(state)
+NCA_mk_preload     = function(state){
+  isgood    = TRUE
+  msgs      = c()
+  err_msg   = c()
+  ylist     = list()
+  yaml_list = list()
+
+  ylist = list(
+      fm_yaml  = file.path("config", basename(state[["FM_yaml_file"]])),
+      mod_yaml = file.path("config", basename(state[["MOD_yaml_file"]]))
+  )
+
+  DSV = state[["NCA"]][["DSV"]]
+
+  if(DSV[["hasds"]]){
+    ele_idx = 1
+    # Walking through each element:
+    for(element_id in names(state[["NCA"]][["anas"]])){
+      tmp_source_ele = state[["NCA"]][["anas"]][[element_id]]
+
+      # we only processess analyses that have intervals
+      if(!is.null(tmp_source_ele[["intervals"]])){
+        # Finding the data source:
+        dsv_row =
+        DSV[["catalog"]][
+          DSV[["catalog"]][["object"]] == tmp_source_ele[["ana_dsview"]], ]
+        ds_id  = dsv_row[["id"]]
+        ds_idx = dsv_row[["idx"]]
+
+        FM_le(state, paste0("saving element (", tmp_source_ele[["idx"]], ") ", tmp_source_ele[["key"]]))
+
+        # Creates the empty element:
+        tmp_element = list(
+          idx   = tmp_source_ele[["idx"]],
+          name  = tmp_source_ele[["key"]],
+          notes = tmp_source_ele[["notes"]],
+          data_source = list(
+            id  = ds_id,
+            idx = ds_idx),
+          nca_config  = list(),
+          ana_options = list(),
+          components  = list())
+
+        found_uis = c()
+        # Defining the analysis options:
+        ana_opts = as.vector(unlist(state[["NCA"]][["ui_ana_map"]]))
+        tmp_element[["ana_options"]] = tmp_source_ele[ana_opts]
+
+        # The key is defined as the name above and the mapping is handled on
+        # preload, so we set it to NULL here to remove it:
+        tmp_element[["ana_options"]][["key"]] = NULL
+
+        # Defining the nca_config options:
+        for(nca_opt in names(state[["NCA"]][["nca_config"]][["default"]])){
+          nca_opt_pknca_option = state[["NCA"]][["nca_config"]][["default"]][[nca_opt]][["pknca_option"]]
+          nca_opt_ui_id        = state[["NCA"]][["nca_config"]][["default"]][[nca_opt]][["ui_id"]]
+
+          if(nca_opt_ui_id %in% names(tmp_source_ele)){
+            nca_opt_value  = tmp_source_ele[[ nca_opt_ui_id ]]
+          } else {
+            nca_opt_value  = state[["NCA"]][["nca_config"]][["default"]][[nca_opt]][["value"]]
+          }
+          tmp_element[["nca_config"]][[nca_opt_pknca_option]] = nca_opt_value
+        }
+
+        comp_idx = 1
+        for(ridx in 1:nrow(tmp_source_ele[["intervals"]])){
+          np_actual_vect =
+            as.vector(
+              stringr::str_split(
+                string   = tmp_source_ele[["intervals"]][ridx, ][["np_actual"]],
+                pattern  = "," ,
+                simplify = TRUE)
+            )
+
+          tmp_msg = paste0("  -> interval: [",
+                           tmp_source_ele[["intervals"]][ridx, ][["start"]],
+                           ",",
+                           tmp_source_ele[["intervals"]][ridx, ][["stop"]],
+                           "]  ", tmp_source_ele[["intervals"]][ridx, ][["np_text"]])
+          FM_le(state, tmp_msg)
+          tmp_element[["components"]][[comp_idx]] = list( component = list(
+            nca_parameters = np_actual_vect,
+              start        = tmp_source_ele[["intervals"]][ridx, ][["start"]],
+              stop         = tmp_source_ele[["intervals"]][ridx, ][["stop"]]))
+
+          comp_idx = comp_idx + 1
+        }
+
+        # Appending element
+        ylist[["elements"]][[ele_idx]] = list(element = tmp_element)
+        ele_idx = ele_idx + 1
+      }
+    }
+  }
+
+  # Creating the yaml list with the module ID at the top level
+  yaml_list = list()
+  yaml_list[[ state[["id"]] ]]  = ylist
+
+  formods::FM_le(state,paste0("mk_preload isgood: ",isgood))
+
+  if(!isgood && !is.null(err_msg)){
+    formods::FM_le(state,err_msg,entry_type="danger")
+    msgs = c(msgs, err_msg)
+  }
+
+
+
+  res = list(
+    isgood    = isgood,
+    msgs      = msgs,
+    yaml_list = yaml_list)
+}
+

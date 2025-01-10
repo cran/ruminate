@@ -14,7 +14,7 @@
 
 #'@import shiny
 
-.onLoad <- function(libname, pkgname){
+.onAttach <- function(libname, pkgname){
 
   #------------------------------------
   # Checking for rxpackages
@@ -23,7 +23,7 @@
   #mr = FM_message("Loading ruminate", entry_type="h1")
   #mr = FM_message("Checking for required nlmixr2 family of tools", entry_type="h2")
 
-  pkgs = c("rxode2", "nonmem2rx", "nlmixr2lib", "rxode2et")
+  pkgs = c("rxode2", "nonmem2rx", "nlmixr2lib")
   for(pkg in pkgs){
     pkg_var = paste0("ruminate_", pkg, "_found")
     if(!requireNamespace(pkg, quietly=TRUE)){
@@ -38,6 +38,18 @@
   }
 
   Sys.setenv(ruminate_rxfamily_found = suggested_found)
+
+  packageStartupMessage("Loading ruminate")
+  rcres = ruminate_check(verbose = FALSE)
+  if(!rcres[["all_found"]]){
+    packageStartupMessage("Missing suggested packages")
+    for(pkg in rcres[["missing_pkgs"]]){
+      packageStartupMessage(paste0(" - ",pkg))
+    }
+    packageStartupMessage("")
+    packageStartupMessage("Install with the following:")
+    packageStartupMessage(paste0('install.packages(c("', paste0(rcres[["missing_pkgs"]], collapse='", "'), '"))'))
+  }
 }
 
 #'@export
@@ -72,7 +84,7 @@ ruminate_check <- function(verbose=TRUE){
    "prompter",
    "rmarkdown",
    "readxl",
-   "rxode2et",
+   "rxode2",
    "shinydashboard",
    "testthat",
    "ubiquity")
@@ -110,8 +122,10 @@ res}
 #'@param port Port number for the app (3838)
 #'@param server_opts List of options (names) and their vlues (value) e.g.
 #'\code{list(shiny.maxRequestSize = 30 * 1024^2)}.
+#'@param devmode   Boolean value, when TRUE will run ruminate with development
+#'modules.
 #'@param mksession Boolean value, when TRUE will load test session data
-#'for app testing
+#'for app testing.
 #'@return Nothing is returned, this function just runs the built-in ruminate
 #'app.
 #'@examples
@@ -121,6 +135,7 @@ res}
 ruminate = function(host        = "127.0.0.1",
                     port        = 3838,
                     server_opts = list(shiny.maxRequestSize = 30 * 1024^2),
+                    devmode     = FALSE,
                     mksession   = FALSE){
 
 
@@ -144,9 +159,15 @@ ruminate = function(host        = "127.0.0.1",
     file.create(ftmptest)
   }
 
-  shiny::runApp(system.file(package="ruminate", "templates","ruminate.R"),
-                host  = host,
-                port  = port)
+  if(devmode){
+    shiny::runApp(system.file(package="ruminate", "templates","ruminate_devel.R"),
+                  host  = host,
+                  port  = port)
+  } else {
+    shiny::runApp(system.file(package="ruminate", "templates","ruminate.R"),
+                  host  = host,
+                  port  = port)
+  }
 
 }
 

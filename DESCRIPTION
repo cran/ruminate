@@ -1,6 +1,6 @@
 Package: ruminate
 Title: A Pharmacometrics Data Transformation and Analysis Tool
-Version: 0.2.4
+Version: 0.3.1
 Authors@R: 
     person("John", "Harrold", , "john.m.harrold@gmail.com", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0003-2052-4373"))
@@ -10,19 +10,20 @@ BugReports: https://github.com/john-harrold/ruminate/issues
 URL: https://ruminate.ubiquity.tools/
 Encoding: UTF-8
 Depends: R (>= 4.2.0)
-Imports: digest, dplyr, DT, flextable, formods (>= 0.1.6), ggplot2,
+Imports: digest, dplyr, DT, flextable, formods (>= 0.2.0), ggplot2,
         onbrand (>= 1.0.3), PKNCA (>= 0.10.2), plotly, rhandsontable,
-        rlang, shiny, shinyAce, shinyWidgets, rxode2 (>= 2.1.2), stats,
-        stringr, tidyr, utils, yaml
-Suggests: cli, clipr, gridExtra, knitr, nlmixr2lib, nonmem2rx,
-        prompter, rmarkdown, readxl, rxode2et, shinydashboard, testthat
+        rlang, shiny, shinyAce, shinyWidgets, stats, stringr, tidyr,
+        utils, yaml, zip
+Suggests: babelmixr2, cli, clipr, gridExtra, knitr, nlmixr2lib(>=
+        0.3.0), nonmem2rx, nlmixr2(>= 3.0.0), prompter, rmarkdown,
+        readxl, rxode2 (>= 3.0.0), shinybusy, shinydashboard, testthat
         (>= 3.0.0), ubiquity
-RoxygenNote: 7.3.1
+RoxygenNote: 7.3.2
 Config/testthat/edition: 3
 VignetteBuilder: knitr
 NeedsCompilation: no
-Packaged: 2024-05-27 05:13:29 UTC; jmh
+Packaged: 2025-01-10 14:59:10 UTC; jmh
 Author: John Harrold [aut, cre] (<https://orcid.org/0000-0003-2052-4373>)
 Maintainer: John Harrold <john.m.harrold@gmail.com>
 Repository: CRAN
-Date/Publication: 2024-05-28 02:20:03 UTC
+Date/Publication: 2025-01-10 15:50:06 UTC

@@ -5,6 +5,7 @@
 
 <!-- 
 -->
+
 <!-- badges: start -->
 
 [![Codecov test
@@ -20,10 +21,11 @@ Experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](h
 The goal of `{ruminate}` is to facilitate exploration of pharmacometrics
 data. This is done by creating a Shiny interface to different tools for
 data transformation (`{dplyr}` and `{tidyr}`), plotting (`{ggplot2}`),
-and noncompartmental analysis (`{PKNCA}`). These results can be reported
-in Excel, Word or PowerPoint. The state of the app can be saved and
-loaded at a later date. When saved, a script is generated to reproduce
-the different actions in the Shiny interface.
+noncompartmental analysis (`{PKNCA}`), and ODE-based adaptive trial
+simulations (`{rxode2}`). These results can be reported in Excel, Word
+or PowerPoint. The state of the app can be saved and loaded at a later
+date. When saved, a script is generated to reproduce the different
+actions in the Shiny interface.
 
 # Deployed example in the cloud
 
@@ -38,25 +40,12 @@ instance and if many people are using it at once it can be slow.
 
 ## From CRAN
 
-You can install the released version of `rumiante` from
+You can install the released version of `ruminate` from
 [CRAN](https://cran.r-project.org/package=ruminate) with:
 
 ``` r
-# General dependencies:
-install.packages("clipr")
-install.packages("gridExtra")
-install.packages("prompter")
-install.packages("readxl")
-install.packages("shinydashboard")
-install.packages("ubiquity")
-
-# Dependencies for the MB and CTS modules
-install.packages("nlmixr2lib")
-install.packages("nonmem2rx")
-install.packages("rxode2")
-
 # Actual package
-install.packages("ruminate")
+install.packages("ruminate",  dependencies=TRUE)
 ```
 
 ## Development version
@@ -70,33 +59,20 @@ if(system.file(package="devtools") == ""){
   install.packages("devtools") 
 }
 
-# General dependencies:
-install.packages("clipr")
-install.packages("gridExtra")
-install.packages("prompter")
-install.packages("readxl")
-install.packages("shinydashboard")
-install.packages("ubiquity")
-
-# Dependencies for the MB and CTS modules
-install.packages("nlmixr2lib")
-install.packages("nonmem2rx")
-install.packages("rxode2")
-
-devtools::install_github("john-harrold/onbrand",  dependencies=TRUE)
-devtools::install_github("john-harrold/formods",  dependencies=TRUE)
-devtools::install_github("john-harrold/ruminate")
+devtools::install_github("john-harrold/onbrand",   dependencies=TRUE)
+devtools::install_github("john-harrold/formods",   dependencies=TRUE)
+devtools::install_github("john-harrold/ruminate",  dependencies=TRUE)
 ```
 
 Note that because `{ruminate}` depends on `{formods}` and `{onbrand}`
 you will need to first install the development versions of `{onbrand}`
 and `{formods}`.
 
-# Running in ruminate
+# Running ruminate
 
 ## In RStudio
 
-This will run the default/stable version of rumiante:
+This will run the default/stable version of ruminate:
 
 ``` r
 library(ruminate)
@@ -118,7 +94,7 @@ version off of github to make sure you have the latest version.**
 ## In a Docker container
 
 This kind of assumes a basic familiarity with Docker. Keep in mind that
-these containers are built for ‘x86’ images. Basically Intel/AMD cpus.
+these containers are built for ‘x86’ images. Essentially Intel/AMD cpus.
 This means that if you have a Mac with Apple Silicon (M1, M2,etc.) it
 may not work or the performance may not be that good.
 
@@ -128,6 +104,11 @@ This will pull container from docker and run it locally
 
     docker pull johnmharrold/ruminate:latest
     docker run -p 3838:3838   johnmharrold/ruminate:latest &
+
+If that worked you can put the following into a web browser and then use
+ruminate there:
+
+    http://127.0.0.1:3838/
 
 ### Create your own container
 
